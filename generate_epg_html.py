@@ -72,7 +72,7 @@ html_content = """
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Programación TV España - Próximas 2 horas</title>
+    <title>Programación TV España</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <style>
@@ -85,8 +85,7 @@ html_content = """
             --hover-color: #f1f1f1;
             --time-marker: #e50914;
             --current-program: #fff8e1;
-            --now-playing: #e8f4fc;
-            --channel-bg: #f9f9f9;
+            --channel-header: #f8f8f8;
         }
         
         * {
@@ -100,95 +99,114 @@ html_content = """
             line-height: 1.6;
             color: var(--text-color);
             background-color: var(--background-color);
-            padding: 20px;
+            padding: 0;
         }
         
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            overflow: hidden;
+            padding: 0 15px;
         }
         
         header {
             background-color: var(--primary-color);
             color: white;
-            padding: 15px 20px;
+            padding: 15px 0;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
         
         h1 {
-            font-weight: 500;
-            font-size: 24px;
-        }
-        
-        .current-time {
-            display: inline-block;
-            background: rgba(255,255,255,0.2);
-            padding: 3px 10px;
-            border-radius: 4px;
-            margin-left: 10px;
-            font-size: 14px;
-        }
-        
-        .time-range {
             text-align: center;
-            padding: 10px;
-            background: var(--secondary-color);
-            color: white;
             font-weight: 500;
+            font-size: 28px;
         }
         
-        .program-grid {
-            display: grid;
-            grid-template-columns: 150px repeat(4, 1fr);
-            overflow-x: auto;
-        }
-        
-        .channel-row {
-            display: contents;
-        }
-        
-        .channel-name {
+        .time-marker {
             position: sticky;
             left: 0;
-            background: var(--channel-bg);
-            padding: 12px 15px;
-            border-bottom: 1px solid var(--border-color);
-            font-weight: 500;
-            z-index: 2;
+            background-color: var(--time-marker);
+            color: white;
+            padding: 3px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            z-index: 10;
+            margin: 10px 0;
+            display: inline-block;
+        }
+        
+        .programs-container {
+            overflow-x: auto;
+            position: relative;
+            margin-top: 20px;
+        }
+        
+        .timeline {
+            display: flex;
+            min-width: max-content;
+            position: sticky;
+            top: 0;
+            background: white;
+            z-index: 5;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
         
         .time-slot {
+            width: 80px;
+            flex-shrink: 0;
             text-align: center;
+            font-size: 12px;
+            color: #666;
             padding: 8px 5px;
             border-bottom: 1px solid var(--border-color);
-            background: var(--channel-bg);
-            font-size: 13px;
+            background: var(--channel-header);
+        }
+        
+        .programs-grid {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .channel-row {
+            display: flex;
+            min-height: 60px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .channel-header {
+            position: sticky;
+            left: 0;
+            width: 150px;
+            padding: 10px;
+            background: var(--channel-header);
             font-weight: 500;
+            z-index: 3;
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+        }
+        
+        .programs-row {
+            display: flex;
+            flex-grow: 1;
+            min-width: max-content;
         }
         
         .program {
-            padding: 12px 8px;
-            border-bottom: 1px solid var(--border-color);
+            padding: 8px 5px;
             border-right: 1px solid var(--border-color);
+            overflow: hidden;
             font-size: 13px;
             position: relative;
+            min-height: 60px;
         }
         
         .program.current {
             background-color: var(--current-program);
-            border-left: 3px solid var(--primary-color);
-        }
-        
-        .program.now {
-            background-color: var(--now-playing);
             font-weight: 500;
         }
         
         .program-title {
-            margin-bottom: 4px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -197,54 +215,50 @@ html_content = """
         .program-time {
             font-size: 11px;
             color: #666;
+            margin-top: 3px;
         }
         
         .now-label {
             position: absolute;
             top: 4px;
-            right: 8px;
+            right: 4px;
             background: var(--primary-color);
             color: white;
             font-size: 10px;
-            padding: 2px 5px;
+            padding: 2px 4px;
             border-radius: 3px;
         }
         
         @media (max-width: 768px) {
-            .program-grid {
-                grid-template-columns: 120px repeat(4, 1fr);
-            }
-            
-            .channel-name {
-                padding: 10px 12px;
+            .channel-header {
+                width: 120px;
                 font-size: 14px;
             }
             
-            .program {
-                padding: 10px 6px;
-                font-size: 12px;
+            .time-slot {
+                width: 60px;
             }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>Programación TV <span class="current-time">Ahora: """ + now.strftime("%H:%M") + """</span></h1>
-        </header>
-        
-        <div class="time-range">
-            Próximas 2 horas: """ + now.strftime("%H:%M") + """ - """ + (now + timedelta(hours=2)).strftime("%H:%M") + """
+    <header>
+        <div class="container">
+            <h1>Guía de Programación TV</h1>
         </div>
+    </header>
+    
+    <div class="container">
+        <div class="time-marker">Ahora: """ + now.strftime("%H:%M") + """</div>
         
-        <div class="program-grid" id="programGrid">
-            <!-- Cabecera con franjas horarias -->
-            <div class="channel-row">
-                <div class="channel-name">Canal</div>
-                <!-- Las franjas horarias se generarán con JavaScript -->
+        <div class="programs-container">
+            <div class="timeline" id="timeline">
+                <!-- Franjas horarias se generarán con JavaScript -->
             </div>
             
-            <!-- Las filas de programación se generarán con JavaScript -->
+            <div class="programs-grid" id="programsGrid">
+                <!-- Programación se generará con JavaScript -->
+            </div>
         </div>
     </div>
 
@@ -257,21 +271,16 @@ html_content = """
         const allPrograms = [...currentPrograms, ...nextPrograms];
         const channels = [...new Set(allPrograms.map(p => p['canal']))];
         
-        // Función para formatear hora como HH:MM
-        function formatTime(date) {
-            return date.toTimeString().substr(0, 5);
-        }
-        
-        // Obtener el rango de las próximas 2 horas
-        const now = new Date();
-        const endTime = new Date(now.getTime() + 2 * 60 * 60 * 1000);
-        
-        // Generar franjas horarias cada 30 minutos
+        // Generar franjas horarias (solo próximas 2 horas)
         function generateTimeSlots() {
-            const timeSlots = [];
-            let currentSlot = new Date(now);
+            const timeline = document.getElementById('timeline');
+            timeline.innerHTML = '';
+            
+            const now = new Date();
+            const endTime = new Date(now.getTime() + 2 * 60 * 60 * 1000);
             
             // Redondear a la media hora más cercana
+            let currentSlot = new Date(now);
             const minutes = currentSlot.getMinutes();
             if (minutes < 30) {
                 currentSlot.setMinutes(0);
@@ -279,42 +288,56 @@ html_content = """
                 currentSlot.setMinutes(30);
             }
             
-            // Generar slots hasta cubrir 2 horas
+            // Crear franjas cada 30 minutos para las próximas 2 horas
+            while (currentSlot <= endTime) {
+                const hours = currentSlot.getHours().toString().padStart(2, '0');
+                const mins = currentSlot.getMinutes().toString().padStart(2, '0');
+                timeline.innerHTML += `<div class="time-slot">${hours}:${mins}</div>`;
+                currentSlot = new Date(currentSlot.getTime() + 30 * 60 * 1000);
+            }
+        }
+        
+        // Generar la programación para todos los canales
+        function generateProgramsGrid() {
+            const programsGrid = document.getElementById('programsGrid');
+            programsGrid.innerHTML = '';
+            
+            // Primero generamos todas las franjas horarias para calcular posiciones
+            const timeSlots = [];
+            const now = new Date();
+            const endTime = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+            
+            // Redondear a la media hora más cercana
+            let currentSlot = new Date(now);
+            const minutes = currentSlot.getMinutes();
+            if (minutes < 30) {
+                currentSlot.setMinutes(0);
+            } else {
+                currentSlot.setMinutes(30);
+            }
+            
             while (currentSlot <= endTime) {
                 timeSlots.push(new Date(currentSlot));
                 currentSlot = new Date(currentSlot.getTime() + 30 * 60 * 1000);
             }
             
-            return timeSlots;
-        }
-        
-        // Generar la cuadrícula de programación
-        function generateProgramGrid() {
-            const timeSlots = generateTimeSlots();
-            const programGrid = document.getElementById('programGrid');
-            
-            // Generar cabecera con franjas horarias
-            const headerRow = document.querySelector('.channel-row');
-            timeSlots.forEach(slot => {
-                headerRow.innerHTML += `
-                    <div class="time-slot">${formatTime(slot)}</div>
-                `;
-            });
-            
-            // Generar filas para cada canal
+            // Para cada canal, crear una fila
             channels.forEach(channel => {
-                const channelPrograms = allPrograms
-                    .filter(p => p['canal'] === channel)
-                    .sort((a, b) => a['inicio'].localeCompare(b['inicio']));
+                const channelPrograms = allPrograms.filter(p => p['canal'] === channel);
                 
                 if (channelPrograms.length === 0) return;
                 
                 const row = document.createElement('div');
                 row.className = 'channel-row';
-                row.innerHTML = `<div class="channel-name">${channel}</div>`;
                 
-                // Para cada franja horaria, encontrar el programa correspondiente
-                timeSlots.forEach((slot, index) => {
+                // Cabecera del canal
+                row.innerHTML = `<div class="channel-header">${channel}</div>`;
+                
+                const programsRow = document.createElement('div');
+                programsRow.className = 'programs-row';
+                
+                // Para cada franja horaria, buscar programas
+                timeSlots.forEach(slot => {
                     const slotEnd = new Date(slot.getTime() + 30 * 60 * 1000);
                     
                     // Buscar programa que se solape con esta franja
@@ -334,24 +357,28 @@ html_content = """
                             new Date(`2000-01-01T${program['inicio']}:00`) <= now && 
                             new Date(`2000-01-01T${program['fin']}:00`) >= now;
                         
-                        row.innerHTML += `
-                            <div class="program ${isCurrent ? 'current' : ''} ${isNow ? 'now' : ''}">
+                        programsRow.innerHTML += `
+                            <div class="program ${isCurrent ? 'current' : ''}">
                                 ${isNow ? '<span class="now-label">AHORA</span>' : ''}
                                 <div class="program-title">${program['titulo']}</div>
                                 <div class="program-time">${program['inicio']} - ${program['fin']}</div>
                             </div>
                         `;
                     } else {
-                        row.innerHTML += '<div class="program"></div>';
+                        programsRow.innerHTML += '<div class="program"></div>';
                     }
                 });
                 
-                programGrid.appendChild(row);
+                row.appendChild(programsRow);
+                programsGrid.appendChild(row);
             });
         }
         
-        // Inicializar la cuadrícula al cargar la página
-        document.addEventListener('DOMContentLoaded', generateProgramGrid);
+        // Inicializar la guía
+        document.addEventListener('DOMContentLoaded', () => {
+            generateTimeSlots();
+            generateProgramsGrid();
+        });
     </script>
 </body>
 </html>
