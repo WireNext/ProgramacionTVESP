@@ -72,7 +72,7 @@ html_content = """
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Programación TV España</title>
+    <title>Programación TV España - Próximas 2 horas</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <style>
@@ -85,8 +85,8 @@ html_content = """
             --hover-color: #f1f1f1;
             --time-marker: #e50914;
             --current-program: #fff8e1;
-            --channel-tab-active: white;
-            --channel-tab-inactive: #f5f5f5;
+            --now-playing: #e8f4fc;
+            --channel-bg: #f9f9f9;
         }
         
         * {
@@ -100,122 +100,95 @@ html_content = """
             line-height: 1.6;
             color: var(--text-color);
             background-color: var(--background-color);
-            padding: 0;
+            padding: 20px;
         }
         
         .container {
-            max-width: 1400px;
+            max-width: 1200px;
             margin: 0 auto;
-            padding: 0 15px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
         }
         
         header {
             background-color: var(--primary-color);
             color: white;
-            padding: 15px 0;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            padding: 15px 20px;
         }
         
         h1 {
-            text-align: center;
             font-weight: 500;
-            font-size: 28px;
+            font-size: 24px;
         }
         
-        .time-marker {
-            position: absolute;
-            top: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: var(--time-marker);
-            color: white;
+        .current-time {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
             padding: 3px 10px;
-            border-radius: 0 0 4px 4px;
-            font-size: 12px;
-            font-weight: bold;
-            z-index: 10;
-        }
-        
-        .channels-container {
-            display: flex;
-            position: relative;
-            margin-top: 40px;
-        }
-        
-        .channel-tabs {
-            width: 150px;
-            flex-shrink: 0;
-            border-right: 1px solid var(--border-color);
-            background: var(--channel-tab-inactive);
-        }
-        
-        .channel-tab {
-            padding: 15px 10px;
-            border-bottom: 1px solid var(--border-color);
-            cursor: pointer;
-            transition: all 0.2s;
+            border-radius: 4px;
+            margin-left: 10px;
             font-size: 14px;
+        }
+        
+        .time-range {
+            text-align: center;
+            padding: 10px;
+            background: var(--secondary-color);
+            color: white;
             font-weight: 500;
         }
         
-        .channel-tab:hover {
-            background-color: var(--hover-color);
-        }
-        
-        .channel-tab.active {
-            background-color: var(--channel-tab-active);
-            font-weight: 700;
-            border-right: 3px solid var(--primary-color);
-        }
-        
-        .programs-container {
-            flex-grow: 1;
+        .program-grid {
+            display: grid;
+            grid-template-columns: 150px repeat(4, 1fr);
             overflow-x: auto;
-            position: relative;
         }
         
-        .timeline {
-            display: flex;
-            min-width: max-content;
-            position: relative;
-            padding-top: 40px;
+        .channel-row {
+            display: contents;
+        }
+        
+        .channel-name {
+            position: sticky;
+            left: 0;
+            background: var(--channel-bg);
+            padding: 12px 15px;
+            border-bottom: 1px solid var(--border-color);
+            font-weight: 500;
+            z-index: 2;
         }
         
         .time-slot {
-            width: 80px;
-            flex-shrink: 0;
             text-align: center;
-            font-size: 12px;
-            color: #666;
-            padding: 5px;
-            border-right: 1px dashed var(--border-color);
-        }
-        
-        .programs-grid {
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .channel-programs {
-            display: flex;
-            height: 60px;
+            padding: 8px 5px;
             border-bottom: 1px solid var(--border-color);
+            background: var(--channel-bg);
+            font-size: 13px;
+            font-weight: 500;
         }
         
         .program {
-            padding: 8px 5px;
+            padding: 12px 8px;
+            border-bottom: 1px solid var(--border-color);
             border-right: 1px solid var(--border-color);
-            overflow: hidden;
             font-size: 13px;
             position: relative;
         }
         
         .program.current {
             background-color: var(--current-program);
+            border-left: 3px solid var(--primary-color);
+        }
+        
+        .program.now {
+            background-color: var(--now-playing);
             font-weight: 500;
         }
         
         .program-title {
+            margin-bottom: 4px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -224,58 +197,54 @@ html_content = """
         .program-time {
             font-size: 11px;
             color: #666;
-            margin-top: 3px;
         }
         
         .now-label {
             position: absolute;
-            top: -20px;
-            left: 0;
-            font-size: 11px;
-            color: var(--time-marker);
-            font-weight: bold;
+            top: 4px;
+            right: 8px;
+            background: var(--primary-color);
+            color: white;
+            font-size: 10px;
+            padding: 2px 5px;
+            border-radius: 3px;
         }
         
         @media (max-width: 768px) {
-            .channel-tabs {
-                width: 120px;
+            .program-grid {
+                grid-template-columns: 120px repeat(4, 1fr);
             }
             
-            .time-slot {
-                width: 60px;
+            .channel-name {
+                padding: 10px 12px;
+                font-size: 14px;
             }
             
-            .channel-tab {
-                padding: 12px 8px;
-                font-size: 13px;
+            .program {
+                padding: 10px 6px;
+                font-size: 12px;
             }
         }
     </style>
 </head>
 <body>
-    <header>
-        <div class="container">
-            <h1>Guía de Programación TV</h1>
-        </div>
-    </header>
-    
     <div class="container">
-        <div class="time-marker">Ahora: """ + now.strftime("%H:%M") + """</div>
+        <header>
+            <h1>Programación TV <span class="current-time">Ahora: """ + now.strftime("%H:%M") + """</span></h1>
+        </header>
         
-        <div class="channels-container">
-            <div class="channel-tabs" id="channelTabs">
-                <!-- Pestañas de canales se generarán con JavaScript -->
+        <div class="time-range">
+            Próximas 2 horas: """ + now.strftime("%H:%M") + """ - """ + (now + timedelta(hours=2)).strftime("%H:%M") + """
+        </div>
+        
+        <div class="program-grid" id="programGrid">
+            <!-- Cabecera con franjas horarias -->
+            <div class="channel-row">
+                <div class="channel-name">Canal</div>
+                <!-- Las franjas horarias se generarán con JavaScript -->
             </div>
             
-            <div class="programs-container">
-                <div class="timeline" id="timeline">
-                    <!-- Franjas horarias se generarán con JavaScript -->
-                </div>
-                
-                <div class="programs-grid" id="programsGrid">
-                    <!-- Programación se generará con JavaScript -->
-                </div>
-            </div>
+            <!-- Las filas de programación se generarán con JavaScript -->
         </div>
     </div>
 
@@ -288,112 +257,101 @@ html_content = """
         const allPrograms = [...currentPrograms, ...nextPrograms];
         const channels = [...new Set(allPrograms.map(p => p['canal']))];
         
-        // Generar franjas horarias
+        // Función para formatear hora como HH:MM
+        function formatTime(date) {
+            return date.toTimeString().substr(0, 5);
+        }
+        
+        // Obtener el rango de las próximas 2 horas
+        const now = new Date();
+        const endTime = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+        
+        // Generar franjas horarias cada 30 minutos
         function generateTimeSlots() {
-            const timeline = document.getElementById('timeline');
-            timeline.innerHTML = '';
+            const timeSlots = [];
+            let currentSlot = new Date(now);
             
-            // Crear franjas cada 30 minutos desde las 6:00 hasta las 00:00
-            for (let hour = 6; hour <= 24; hour++) {
-                const hourStr = hour === 24 ? '00' : String(hour).padStart(2, '0');
-                timeline.innerHTML += `
-                    <div class="time-slot">${hourStr}:00</div>
-                    <div class="time-slot">${hourStr}:30</div>
-                `;
+            // Redondear a la media hora más cercana
+            const minutes = currentSlot.getMinutes();
+            if (minutes < 30) {
+                currentSlot.setMinutes(0);
+            } else {
+                currentSlot.setMinutes(30);
             }
+            
+            // Generar slots hasta cubrir 2 horas
+            while (currentSlot <= endTime) {
+                timeSlots.push(new Date(currentSlot));
+                currentSlot = new Date(currentSlot.getTime() + 30 * 60 * 1000);
+            }
+            
+            return timeSlots;
         }
         
-        // Generar pestañas de canales
-        function generateChannelTabs() {
-            const channelTabs = document.getElementById('channelTabs');
-            channelTabs.innerHTML = '';
+        // Generar la cuadrícula de programación
+        function generateProgramGrid() {
+            const timeSlots = generateTimeSlots();
+            const programGrid = document.getElementById('programGrid');
             
-            channels.forEach((channel, index) => {
-                channelTabs.innerHTML += `
-                    <div class="channel-tab ${index === 0 ? 'active' : ''}" 
-                         data-channel="${channel}" 
-                         onclick="showChannel('${channel}')">
-                        ${channel}
-                    </div>
+            // Generar cabecera con franjas horarias
+            const headerRow = document.querySelector('.channel-row');
+            timeSlots.forEach(slot => {
+                headerRow.innerHTML += `
+                    <div class="time-slot">${formatTime(slot)}</div>
                 `;
             });
-        }
-        
-        // Generar la programación
-        function generateProgramsGrid() {
-            const programsGrid = document.getElementById('programsGrid');
-            programsGrid.innerHTML = '';
             
+            // Generar filas para cada canal
             channels.forEach(channel => {
-                const channelPrograms = allPrograms.filter(p => p['canal'] === channel);
-                const channelRow = document.createElement('div');
-                channelRow.className = 'channel-programs';
-                channelRow.id = `channel-${channel.replace(/\s+/g, '-')}`;
-                channelRow.style.display = 'none';
+                const channelPrograms = allPrograms
+                    .filter(p => p['canal'] === channel)
+                    .sort((a, b) => a['inicio'].localeCompare(b['inicio']));
                 
-                // Ordenar programas por hora de inicio
-                channelPrograms.sort((a, b) => {
-                    return a['inicio'].localeCompare(b['inicio']);
+                if (channelPrograms.length === 0) return;
+                
+                const row = document.createElement('div');
+                row.className = 'channel-row';
+                row.innerHTML = `<div class="channel-name">${channel}</div>`;
+                
+                // Para cada franja horaria, encontrar el programa correspondiente
+                timeSlots.forEach((slot, index) => {
+                    const slotEnd = new Date(slot.getTime() + 30 * 60 * 1000);
+                    
+                    // Buscar programa que se solape con esta franja
+                    const program = channelPrograms.find(p => {
+                        const pStart = new Date(`2000-01-01T${p['inicio']}:00`);
+                        const pEnd = new Date(`2000-01-01T${p['fin']}:00`);
+                        return pStart < slotEnd && pEnd > slot;
+                    });
+                    
+                    if (program) {
+                        const isCurrent = currentPrograms.some(p => 
+                            p['canal'] === program['canal'] && 
+                            p['titulo'] === program['titulo']
+                        );
+                        
+                        const isNow = isCurrent && 
+                            new Date(`2000-01-01T${program['inicio']}:00`) <= now && 
+                            new Date(`2000-01-01T${program['fin']}:00`) >= now;
+                        
+                        row.innerHTML += `
+                            <div class="program ${isCurrent ? 'current' : ''} ${isNow ? 'now' : ''}">
+                                ${isNow ? '<span class="now-label">AHORA</span>' : ''}
+                                <div class="program-title">${program['titulo']}</div>
+                                <div class="program-time">${program['inicio']} - ${program['fin']}</div>
+                            </div>
+                        `;
+                    } else {
+                        row.innerHTML += '<div class="program"></div>';
+                    }
                 });
                 
-                // Crear celdas de programa
-                channelPrograms.forEach(program => {
-                    const startTime = new Date(`2000-01-01T${program['inicio']}:00`);
-                    const endTime = new Date(`2000-01-01T${program['fin']}:00`);
-                    
-                    // Calcular duración en minutos
-                    const duration = (endTime - startTime) / (1000 * 60);
-                    const width = (duration / 30) * 80; // 80px = 30 minutos
-                    
-                    const isCurrent = currentPrograms.some(p => 
-                        p['canal'] === program['canal'] && 
-                        p['titulo'] === program['titulo']
-                    );
-                    
-                    channelRow.innerHTML += `
-                        <div class="program ${isCurrent ? 'current' : ''}" style="width: ${width}px">
-                            ${isCurrent ? '<div class="now-label">AHORA</div>' : ''}
-                            <div class="program-title">${program['titulo']}</div>
-                            <div class="program-time">${program['inicio']} - ${program['fin']}</div>
-                        </div>
-                    `;
-                });
-                
-                programsGrid.appendChild(channelRow);
+                programGrid.appendChild(row);
             });
-            
-            // Mostrar el primer canal por defecto
-            if (channels.length > 0) {
-                showChannel(channels[0]);
-            }
         }
         
-        // Mostrar programación de un canal específico
-        function showChannel(channelName) {
-            // Actualizar pestañas activas
-            document.querySelectorAll('.channel-tab').forEach(tab => {
-                tab.classList.remove('active');
-                if (tab.dataset.channel === channelName) {
-                    tab.classList.add('active');
-                }
-            });
-            
-            // Ocultar todas las filas de programación
-            document.querySelectorAll('.channel-programs').forEach(row => {
-                row.style.display = 'none';
-            });
-            
-            // Mostrar la fila del canal seleccionado
-            const channelId = `channel-${channelName.replace(/\s+/g, '-')}`;
-            document.getElementById(channelId).style.display = 'flex';
-        }
-        
-        // Inicializar la guía
-        document.addEventListener('DOMContentLoaded', () => {
-            generateTimeSlots();
-            generateChannelTabs();
-            generateProgramsGrid();
-        });
+        // Inicializar la cuadrícula al cargar la página
+        document.addEventListener('DOMContentLoaded', generateProgramGrid);
     </script>
 </body>
 </html>
