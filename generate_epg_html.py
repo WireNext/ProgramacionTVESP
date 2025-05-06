@@ -3,6 +3,7 @@ import requests
 import xml.etree.ElementTree as ET
 from datetime import datetime
 import pytz
+import re
 
 # URL del archivo EPG
 EPG_URL = "https://www.tdtchannels.com/epg/TV.xml.gz"
@@ -15,8 +16,15 @@ with open("TV.xml.gz", "wb") as f:
 with gzip.open("TV.xml.gz", "rb") as f:
     xml_data = f.read()
 
-# Parsear el XML
-root = ET.fromstring(xml_data)
+# Limpiar caracteres problemáticos antes de parsear
+cleaned_data = re.sub(r'[^\x00-\x7F]+', '', xml_data.decode('utf-8', 'ignore'))
+
+# Intentar parsear el XML
+try:
+    root = ET.fromstring(cleaned_data)
+except ET.ParseError as e:
+    print(f"Error al parsear el XML: {e}")
+    exit(1)
 
 # Obtener la hora actual en zona horaria de Madrid
 tz = pytz.timezone("Europe/Madrid")
