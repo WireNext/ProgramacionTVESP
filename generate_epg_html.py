@@ -23,9 +23,9 @@ cleaned_data = re.sub(r'[^\x00-\x7F]+', '', xml_data.decode('utf-8', 'ignore'))
 cleaned_data = cleaned_data.split("<tv>")[-1]  # Tomamos solo lo que está después de <tv>
 cleaned_data = "<tv>" + cleaned_data  # Añadimos de nuevo el <tv> de apertura
 
-# Intentamos parsear el XML con lxml
+# Intentamos parsear el XML con lxml con la opción recover=True
 try:
-    root = etree.fromstring(cleaned_data)
+    root = etree.fromstring(cleaned_data, parser=etree.XMLParser(recover=True))
 except etree.XMLSyntaxError as e:
     print(f"Error al parsear el XML: {e}")
     print("Fragmento del XML problemático (alrededor de la línea de error):")
@@ -42,7 +42,7 @@ current_programs = []
 next_programs = []
 
 for programme in root.findall("programme"):
-    canal = programme.attrib["channel"]
+    canal = programme.attrib.get("channel", "Desconocido")
     inicio = datetime.strptime(programme.attrib["start"][:14], "%Y%m%d%H%M%S")
     inicio = tz.localize(inicio)
     fin = datetime.strptime(programme.attrib["stop"][:14], "%Y%m%d%H%M%S")
