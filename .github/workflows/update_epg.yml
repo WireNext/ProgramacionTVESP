@@ -22,7 +22,6 @@ jobs:
           pip install requests pytz
           pip install lxml pytz requests
 
-
       - name: Ejecutar script
         run: python generate_epg_html.py
 
