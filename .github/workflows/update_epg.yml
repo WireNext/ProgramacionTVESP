@@ -18,8 +18,9 @@ jobs:
           python-version: '3.x'
 
       - name: Instalar dependencias
-        run: pip install requests pytz
-        run: pip install lxml pytz requests
+        run: |
+          pip install requests pytz
+          pip install lxml pytz requests
 
 
       - name: Ejecutar script
