@@ -19,6 +19,8 @@ jobs:
 
       - name: Instalar dependencias
         run: pip install requests pytz
+        run: pip install lxml pytz requests
+
 
       - name: Ejecutar script
         run: python generate_epg_html.py
