@@ -32,7 +32,7 @@ end_time = now + timedelta(hours=2)
 
 # Procesar programas
 programs = []
-for programme in root.findall("programme"):  # Corregido de "programme" a "programme"
+for programme in root.findall("programme"):
     try:
         channel = programme.attrib.get("channel", "Desconocido")
         start = datetime.strptime(programme.attrib["start"][:14], "%Y%m%d%H%M%S")
@@ -66,13 +66,16 @@ sorted_channels = sorted(channels.keys())
 for channel in sorted_channels:
     channels[channel].sort(key=lambda x: x['start'])
 
-# Crear slots de tiempo cada 30 minutos (asegurando zona horaria)
+# Crear slots de tiempo cada 30 minutos (solo para referencia)
 current_slot = datetime(now.year, now.month, now.day, now.hour, 30 if now.minute >= 30 else 0)
-current_slot = tz.localize(current_slot)  # Asegurar que tiene zona horaria
+current_slot = tz.localize(current_slot)
 time_slots = []
 while current_slot <= end_time:
     time_slots.append(current_slot)
     current_slot += timedelta(minutes=30)
+
+# Calcular el ancho mínimo de cada columna (30 minutos)
+COLUMN_WIDTH = 100  # en píxeles
 
 # Generar HTML
 html_content = f"""
@@ -111,59 +114,69 @@ html_content = f"""
             border-radius: 4px;
             font-size: 14px;
         }}
-        .program-table {{
-            width: 100%;
-            border-collapse: collapse;
+        .program-container {{
+            overflow-x: auto;
+            padding: 15px;
         }}
-        .program-table th {{
-            background: #f8f9fa;
-            position: sticky;
-            top: 0;
-            z-index: 10;
-            padding: 12px 15px;
-            text-align: left;
-            border-bottom: 2px solid #ddd;
-            font-weight: 600;
+        .timeline {{
+            display: flex;
+            margin-left: 200px;
+            position: relative;
+            height: 30px;
         }}
-        .program-table td {{
-            padding: 12px 15px;
-            border-bottom: 1px solid #eee;
-            vertical-align: top;
+        .time-slot {{
+            min-width: {COLUMN_WIDTH}px;
+            text-align: center;
+            font-size: 12px;
+            color: #7f8c8d;
+            border-bottom: 1px solid #ddd;
+        }}
+        .channels {{
+            margin-top: 10px;
+        }}
+        .channel-row {{
+            display: flex;
+            margin-bottom: 10px;
+            position: relative;
+            height: 60px;
         }}
         .channel-name {{
-            font-weight: 600;
-            color: #2c3e50;
-            background: #f8f9fa;
-            position: sticky;
+            position: absolute;
             left: 0;
-            min-width: 180px;
+            width: 180px;
+            padding: 10px;
+            background: #f8f9fa;
+            font-weight: 600;
+            border-radius: 4px;
+            height: 100%;
+            box-sizing: border-box;
         }}
-        .time-slot-header {{
-            min-width: 100px;
-            text-align: center;
-            font-weight: 500;
-            color: #7f8c8d;
-        }}
-        .program-cell {{
-            min-width: 200px;
-            border-left: 1px solid #eee;
+        .programs {{
+            display: flex;
+            margin-left: 190px;
+            height: 100%;
+            position: relative;
         }}
         .program {{
+            position: absolute;
             padding: 8px;
             border-radius: 4px;
-            margin-bottom: 5px;
-        }}
-        .current-program {{
             background: #e3f2fd;
             border-left: 3px solid #2196f3;
+            height: 100%;
+            box-sizing: border-box;
+            overflow: hidden;
         }}
-        .now-program {{
+        .program.now {{
             background: #fff8e1;
             border-left: 3px solid #ffc107;
         }}
         .program-title {{
             font-weight: 500;
             margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }}
         .program-time {{
             font-size: 12px;
@@ -179,15 +192,12 @@ html_content = f"""
             margin-left: 8px;
         }}
         @media (max-width: 768px) {{
-            .container {{
-                padding: 0;
-            }}
-            .program-table td, .program-table th {{
-                padding: 8px 10px;
+            .channel-name {{
+                width: 120px;
                 font-size: 14px;
             }}
-            .channel-name {{
-                min-width: 120px;
+            .programs {{
+                margin-left: 125px;
             }}
         }}
     </style>
@@ -199,51 +209,43 @@ html_content = f"""
             <div class="time-display">Actualizado: {now.strftime('%H:%M')}</div>
         </header>
         
-        <div style="overflow-x: auto;">
-            <table class="program-table">
-                <thead>
-                    <tr>
-                        <th class="channel-name">Canal</th>
-                        {' '.join(
-                            f'<th class="time-slot-header">{slot.strftime("%H:%M")}</th>'
-                            for slot in time_slots
-                        )}
-                    </tr>
-                </thead>
-                <tbody>
-                    {''.join(
-                        f'''
-                        <tr>
-                            <td class="channel-name">{channel}</td>
+        <div class="program-container">
+            <div class="timeline">
+                {' '.join(
+                    f'<div class="time-slot" style="min-width: {COLUMN_WIDTH}px">{slot.strftime("%H:%M")}</div>'
+                    for slot in time_slots
+                )}
+            </div>
+            
+            <div class="channels">
+                {''.join(
+                    f'''
+                    <div class="channel-row">
+                        <div class="channel-name">{channel}</div>
+                        <div class="programs">
                             {' '.join(
                                 f'''
-                                <td class="program-cell">
-                                    {''.join(
-                                        f'''
-                                        <div class="program {'current-program' if program['is_current'] else ''} {'now-program' if program['start'] <= now <= program['end'] else ''}">
-                                            <div class="program-title">
-                                                {program['title']}
-                                                {'' if not (program['start'] <= now <= program['end']) else '<span class="now-badge">AHORA</span>'}
-                                            </div>
-                                            <div class="program-time">
-                                                {program['start'].strftime('%H:%M')} - {program['end'].strftime('%H:%M')}
-                                            </div>
-                                        </div>
-                                        '''
-                                        for program in channels[channel]
-                                        if program['start'].strftime('%H:%M') == slot.strftime('%H:%M') or 
-                                           (program['start'] <= slot and program['end'] > slot)
-                                    )}
-                                </td>
+                                <div class="program {'now' if program['is_current'] else ''}" 
+                                     style="left: {((program['start'] - time_slots[0]).total_seconds() / 1800) * COLUMN_WIDTH}px; 
+                                          width: {((program['end'] - program['start']).total_seconds() / 1800) * COLUMN_WIDTH}px">
+                                    <div class="program-title">
+                                        {program['title']}
+                                        {'<span class="now-badge">AHORA</span>' if program['is_current'] else ''}
+                                    </div>
+                                    <div class="program-time">
+                                        {program['start'].strftime('%H:%M')} - {program['end'].strftime('%H:%M')}
+                                    </div>
+                                </div>
                                 '''
-                                for slot in time_slots
+                                for program in channels[channel]
+                                if program['end'] > time_slots[0] and program['start'] < time_slots[-1] + timedelta(minutes=30)
                             )}
-                        </tr>
-                        '''
-                        for channel in sorted_channels
-                    )}
-                </tbody>
-            </table>
+                        </div>
+                    </div>
+                    '''
+                    for channel in sorted_channels
+                )}
+            </div>
         </div>
     </div>
 </body>
