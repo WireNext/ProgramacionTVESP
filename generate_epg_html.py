@@ -74,86 +74,243 @@ html_content = """
     <meta charset="UTF-8">
     <title>Programación TV España</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.12.1/css/jquery.dataTables.min.css">
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.datatables.net/1.12.1/js/jquery.dataTables.min.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f9f9f9; }
-        h1 { text-align: center; margin-bottom: 40px; }
-        table { width: 100%; border-collapse: collapse; background: #fff; margin-bottom: 20px; }
-        th, td { padding: 10px; border: 1px solid #ccc; text-align: left; }
-        th { background-color: #333; color: #fff; }
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2980b9;
+            --background-color: #f8f9fa;
+            --text-color: #333;
+            --border-color: #ddd;
+            --hover-color: #f1f1f1;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: var(--background-color);
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 15px;
+        }
+        
+        h1 {
+            text-align: center;
+            margin: 30px 0;
+            color: var(--primary-color);
+            font-weight: 300;
+        }
+        
+        .accordion {
+            width: 100%;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .accordion-item {
+            margin-bottom: 5px;
+            background: white;
+        }
+        
+        .accordion-header {
+            padding: 15px 20px;
+            background-color: var(--primary-color);
+            color: white;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.3s ease;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .accordion-header:hover {
+            background-color: var(--secondary-color);
+        }
+        
+        .accordion-header::after {
+            content: '+';
+            font-size: 20px;
+            transition: transform 0.3s ease;
+        }
+        
+        .accordion-item.active .accordion-header::after {
+            content: '-';
+        }
+        
+        .accordion-content {
+            padding: 0;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        
+        .accordion-item.active .accordion-content {
+            max-height: 1000px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        th {
+            background-color: var(--hover-color);
+            font-weight: 500;
+        }
+        
+        tr:hover {
+            background-color: var(--hover-color);
+        }
+        
+        .channel-name {
+            font-weight: bold;
+            color: var(--secondary-color);
+        }
+        
+        .now-playing {
+            background-color: #e8f4fc;
+        }
+        
+        .time {
+            font-family: monospace;
+            color: #666;
+        }
+        
+        @media (max-width: 768px) {
+            th, td {
+                padding: 8px 10px;
+                font-size: 13px;
+            }
+            
+            .accordion-header {
+                padding: 12px 15px;
+                font-size: 16px;
+            }
+        }
     </style>
 </head>
 <body>
-    <h1>Programación de la Televisión Española</h1>
-
-    <h2>Programa Actual</h2>
-    <table id="current-programs" class="display">
-        <thead>
-            <tr>
-                <th>Canal</th>
-                <th>Inicio</th>
-                <th>Fin</th>
-                <th>Título</th>
-            </tr>
-        </thead>
-        <tbody>
+    <div class="container">
+        <h1>Programación de la Televisión Española</h1>
+        
+        <div class="accordion">
+            <div class="accordion-item">
+                <div class="accordion-header">Programación Actual</div>
+                <div class="accordion-content">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Canal</th>
+                                <th>Horario</th>
+                                <th>Programa</th>
+                            </tr>
+                        </thead>
+                        <tbody>
 """
 
 # Mostrar programas actuales en emisión
 for program in current_programs:
     html_content += f"""
-    <tr>
-        <td>{program['canal']}</td>
-        <td>{program['inicio']}</td>
-        <td>{program['fin']}</td>
-        <td>{program['titulo']}</td>
-    </tr>
+                            <tr class="now-playing">
+                                <td class="channel-name">{program['canal']}</td>
+                                <td class="time">{program['inicio']} - {program['fin']}</td>
+                                <td><strong>{program['titulo']}</strong></td>
+                            </tr>
     """
 
 html_content += """
-        </tbody>
-    </table>
-
-    <h2>Próximos Programas</h2>
-    <table id="next-programs" class="display">
-        <thead>
-            <tr>
-                <th>Canal</th>
-                <th>Inicio</th>
-                <th>Fin</th>
-                <th>Título</th>
-            </tr>
-        </thead>
-        <tbody>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="accordion-item">
+                <div class="accordion-header">Próximos Programas</div>
+                <div class="accordion-content">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Canal</th>
+                                <th>Horario</th>
+                                <th>Programa</th>
+                            </tr>
+                        </thead>
+                        <tbody>
 """
 
 # Mostrar los próximos programas
 for program in next_programs:
     html_content += f"""
-    <tr>
-        <td>{program['canal']}</td>
-        <td>{program['inicio']}</td>
-        <td>{program['fin']}</td>
-        <td>{program['titulo']}</td>
-    </tr>
+                            <tr>
+                                <td class="channel-name">{program['canal']}</td>
+                                <td class="time">{program['inicio']} - {program['fin']}</td>
+                                <td>{program['titulo']}</td>
+                            </tr>
     """
 
 html_content += """
-        </tbody>
-    </table>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script>
-        $(document).ready(function() {
-            $('#current-programs').DataTable();
-            $('#next-programs').DataTable();
+        document.addEventListener('DOMContentLoaded', function() {
+            const accordionItems = document.querySelectorAll('.accordion-item');
+            
+            accordionItems.forEach(item => {
+                const header = item.querySelector('.accordion-header');
+                
+                header.addEventListener('click', () => {
+                    const currentlyActive = document.querySelector('.accordion-item.active');
+                    
+                    // Si el item clickeado ya está activo, lo cerramos
+                    if (currentlyActive && currentlyActive === item) {
+                        currentlyActive.classList.remove('active');
+                        return;
+                    }
+                    
+                    // Cerramos el item activo (si hay alguno)
+                    if (currentlyActive) {
+                        currentlyActive.classList.remove('active');
+                    }
+                    
+                    // Abrimos el item clickeado
+                    item.classList.add('active');
+                });
+            });
+            
+            // Abrir el primer item por defecto
+            if (accordionItems.length > 0) {
+                accordionItems[0].classList.add('active');
+            }
         });
     </script>
 </body>
 </html>
 """
-
 # Guardar el archivo HTML generado
 with open("programacion.html", "w", encoding="utf-8") as f:
     f.write(html_content)
