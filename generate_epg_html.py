@@ -6,9 +6,10 @@ import pytz
 from lxml import etree
 
 # Configuración de diseño
-COLUMN_WIDTH = 120  # Aumentamos el ancho de cada franja horaria
-ROW_HEIGHT = 80     # Aumentamos la altura de cada fila de canal
-PROGRAM_PADDING = 5 # Espaciado interno de los programas
+COLUMN_WIDTH = 150  # Más ancho para mejor visualización
+ROW_HEIGHT = 90     # Más alto para cada canal
+PROGRAM_PADDING = 8 # Espaciado interno
+MIN_PROGRAM_WIDTH = 120 # Ancho mínimo para programas cortos
 
 # Descargar y procesar el XML
 EPG_URL = "https://www.tdtchannels.com/epg/TV.xml.gz"
@@ -33,7 +34,7 @@ except etree.XMLSyntaxError as e:
 # Configuración de hora
 tz = pytz.timezone("Europe/Madrid")
 now = datetime.now(tz)
-end_time = now + timedelta(hours=3)  # Mostramos 3 horas para mejor espaciado
+end_time = now + timedelta(hours=3)
 
 # Procesar programas
 programs = []
@@ -71,13 +72,36 @@ sorted_channels = sorted(channels.keys())
 for channel in sorted_channels:
     channels[channel].sort(key=lambda x: x['start'])
 
-# Crear slots de tiempo cada 30 minutos (solo para referencia)
+# Crear slots de tiempo cada 30 minutos
 current_slot = datetime(now.year, now.month, now.day, now.hour, 30 if now.minute >= 30 else 0)
 current_slot = tz.localize(current_slot)
 time_slots = []
 while current_slot <= end_time:
     time_slots.append(current_slot)
     current_slot += timedelta(minutes=30)
+
+# Función para calcular posición y ancho sin solapamientos
+def calculate_program_positions(programs, time_slots):
+    positioned_programs = []
+    for program in programs:
+        start_pos = max(0, ((program['start'] - time_slots[0]).total_seconds() / 1800) * COLUMN_WIDTH
+        end_pos = ((program['end'] - time_slots[0]).total_seconds() / 1800) * COLUMN_WIDTH
+        width = max(MIN_PROGRAM_WIDTH, end_pos - start_pos)
+        
+        # Buscar posición vertical disponible (para evitar solapamientos)
+        vertical_pos = 0
+        for other in positioned_programs:
+            if not (end_pos <= other['left'] or start_pos >= other['left'] + other['width']):
+                vertical_pos = max(vertical_pos, other['top'] + ROW_HEIGHT)
+        
+        positioned_programs.append({
+            'program': program,
+            'left': start_pos,
+            'width': width,
+            'top': vertical_pos
+        })
+    
+    return positioned_programs
 
 # Generar HTML
 html_content = f"""
@@ -108,6 +132,9 @@ html_content = f"""
             color: white;
             padding: 20px;
             text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
         }}
         h1 {{
             margin: 0;
@@ -122,13 +149,21 @@ html_content = f"""
             margin-top: 10px;
             font-size: 14px;
         }}
-        .program-container {{
+        .program-view {{
             padding: 20px;
+            position: relative;
+        }}
+        .timeline-container {{
+            position: sticky;
+            top: 80px;
+            background: white;
+            z-index: 50;
+            padding-top: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }}
         .timeline {{
             display: flex;
             margin-left: 200px;
-            position: relative;
             height: 40px;
             background: #f8f9fa;
             border-radius: 5px 5px 0 0;
@@ -141,20 +176,16 @@ html_content = f"""
             color: #555;
             font-weight: 500;
             padding: 5px;
+            flex-shrink: 0;
         }}
-        .channels {{
-            margin-top: 5px;
-            border-radius: 0 0 5px 5px;
-            overflow: hidden;
+        .channels-container {{
+            margin-top: 10px;
+            position: relative;
         }}
-        .channel-row {{
-            display: flex;
+        .channel {{
             margin-bottom: 15px;
             position: relative;
-            height: {ROW_HEIGHT}px;
-            background: #fff;
-            border-radius: 5px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            min-height: {ROW_HEIGHT}px;
         }}
         .channel-name {{
             position: absolute;
@@ -164,18 +195,19 @@ html_content = f"""
             background: #f8f9fa;
             font-weight: 600;
             color: #2c3e50;
-            height: 100%;
+            height: {ROW_HEIGHT}px;
             box-sizing: border-box;
             display: flex;
             align-items: center;
-            border-right: 1px solid #eee;
+            border-radius: 5px;
+            z-index: 20;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }}
-        .programs {{
-            display: flex;
+        .programs-container {{
             margin-left: 190px;
-            height: 100%;
             position: relative;
-            align-items: center;
+            height: {ROW_HEIGHT}px;
+            overflow: visible;
         }}
         .program {{
             position: absolute;
@@ -187,15 +219,12 @@ html_content = f"""
             box-sizing: border-box;
             overflow: hidden;
             box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-            transition: all 0.2s ease;
-        }}
-        .program:hover {{
-            transform: translateY(-2px);
-            box-shadow: 0 3px 6px rgba(0,0,0,0.15);
+            z-index: 10;
         }}
         .program.now {{
             background: #fff8e1;
             border-left: 4px solid #ffc107;
+            z-index: 15;
         }}
         .program-title {{
             font-weight: 500;
@@ -225,14 +254,11 @@ html_content = f"""
                 font-size: 14px;
                 padding: 10px;
             }}
-            .programs {{
+            .programs-container {{
                 margin-left: 125px;
             }}
             .timeline {{
                 margin-left: 125px;
-            }}
-            .program {{
-                height: {ROW_HEIGHT - 5}px;
             }}
         }}
     </style>
@@ -244,25 +270,27 @@ html_content = f"""
             <div class="time-display">Actualizado: {now.strftime('%H:%M')}</div>
         </header>
         
-        <div class="program-container">
-            <div class="timeline">
-                {' '.join(
-                    f'<div class="time-slot" style="min-width: {COLUMN_WIDTH}px">{slot.strftime("%H:%M")}</div>'
-                    for slot in time_slots
-                )}
+        <div class="program-view">
+            <div class="timeline-container">
+                <div class="timeline">
+                    {' '.join(
+                        f'<div class="time-slot" style="min-width: {COLUMN_WIDTH}px">{slot.strftime("%H:%M")}</div>'
+                        for slot in time_slots
+                    )}
+                </div>
             </div>
             
-            <div class="channels">
+            <div class="channels-container">
                 {''.join(
                     f'''
-                    <div class="channel-row">
+                    <div class="channel">
                         <div class="channel-name">{channel}</div>
-                        <div class="programs">
+                        <div class="programs-container">
                             {' '.join(
                                 f'''
                                 <div class="program {'now' if program['is_current'] else ''}" 
                                      style="left: {((program['start'] - time_slots[0]).total_seconds() / 1800) * COLUMN_WIDTH}px; 
-                                          width: {max(100, ((program['end'] - program['start']).total_seconds() / 1800) * COLUMN_WIDTH)}px">
+                                          width: {max(MIN_PROGRAM_WIDTH, ((program['end'] - program['start']).total_seconds() / 1800) * COLUMN_WIDTH)}px">
                                     <div class="program-title">
                                         {program['title']}
                                         {'<span class="now-badge">AHORA</span>' if program['is_current'] else ''}
