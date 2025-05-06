@@ -1,9 +1,9 @@
 import gzip
 import requests
-import xml.etree.ElementTree as ET
+import re
 from datetime import datetime
 import pytz
-import re
+from lxml import etree  # Usamos lxml en lugar de xml.etree.ElementTree
 
 # URL del archivo EPG
 EPG_URL = "https://www.tdtchannels.com/epg/TV.xml.gz"
@@ -23,11 +23,13 @@ cleaned_data = re.sub(r'[^\x00-\x7F]+', '', xml_data.decode('utf-8', 'ignore'))
 cleaned_data = cleaned_data.split("<tv>")[-1]  # Tomamos solo lo que está después de <tv>
 cleaned_data = "<tv>" + cleaned_data  # Añadimos de nuevo el <tv> de apertura
 
-# Intentamos parsear el XML
+# Intentamos parsear el XML con lxml
 try:
-    root = ET.fromstring(cleaned_data)
-except ET.ParseError as e:
+    root = etree.fromstring(cleaned_data)
+except etree.XMLSyntaxError as e:
     print(f"Error al parsear el XML: {e}")
+    print("Fragmento del XML problemático (alrededor de la línea de error):")
+    print(cleaned_data[32200:32240])  # Muestra el fragmento alrededor del error
     exit(1)
 
 # Obtener la hora actual en zona horaria de Madrid
@@ -152,8 +154,6 @@ html_content += """
 </html>
 """
 
-# Guardar el archivo HTML
-with open("programacion_tv.html", "w", encoding="utf-8") as f:
+# Guardar el archivo HTML generado
+with open("programacion.html", "w", encoding="utf-8") as f:
     f.write(html_content)
-
-print("El archivo HTML se ha generado con éxito.")
