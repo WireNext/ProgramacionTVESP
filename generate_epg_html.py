@@ -1,6 +1,6 @@
 import gzip
 import requests
-from lxml import etree
+import xml.etree.ElementTree as ET
 from datetime import datetime
 import pytz
 
@@ -15,16 +15,17 @@ with open("TV.xml.gz", "wb") as f:
 with gzip.open("TV.xml.gz", "rb") as f:
     xml_data = f.read()
 
-# Parsear el XML con lxml para evitar errores
-parser = etree.XMLParser(recover=True, encoding="utf-8")
-root = etree.fromstring(xml_data, parser=parser)
+# Parsear el XML
+root = ET.fromstring(xml_data)
 
-# Obtener hora actual en la zona horaria de Madrid
+# Obtener la hora actual en zona horaria de Madrid
 tz = pytz.timezone("Europe/Madrid")
 now = datetime.now(tz)
 
-# Diccionario para la programación actual por canal
+# Crear un diccionario para almacenar la programación por canal
 programacion = {}
+current_programs = []
+next_programs = []
 
 for programme in root.findall("programme"):
     canal = programme.attrib["channel"]
@@ -33,12 +34,19 @@ for programme in root.findall("programme"):
     fin = datetime.strptime(programme.attrib["stop"][:14], "%Y%m%d%H%M%S")
     fin = tz.localize(fin)
 
+    # Filtramos por los programas actuales y los próximos
     if inicio <= now <= fin:
-        titulo_el = programme.find("title")
-        titulo = titulo_el.text if titulo_el is not None else "Sin título"
-        if canal not in programacion:
-            programacion[canal] = []
-        programacion[canal].append({
+        titulo = programme.find("title").text if programme.find("title") is not None else "Sin título"
+        current_programs.append({
+            "canal": canal,
+            "inicio": inicio.strftime("%H:%M"),
+            "fin": fin.strftime("%H:%M"),
+            "titulo": titulo
+        })
+    elif now < inicio:
+        titulo = programme.find("title").text if programme.find("title") is not None else "Sin título"
+        next_programs.append({
+            "canal": canal,
             "inicio": inicio.strftime("%H:%M"),
             "fin": fin.strftime("%H:%M"),
             "titulo": titulo
@@ -52,35 +60,88 @@ html_content = """
     <meta charset="UTF-8">
     <title>Programación TV España</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.12.1/css/jquery.dataTables.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.12.1/js/jquery.dataTables.min.js"></script>
     <style>
         body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f9f9f9; }
         h1 { text-align: center; margin-bottom: 40px; }
-        .canal { margin-bottom: 40px; }
-        table { width: 100%; border-collapse: collapse; background: #fff; }
+        table { width: 100%; border-collapse: collapse; background: #fff; margin-bottom: 20px; }
         th, td { padding: 10px; border: 1px solid #ccc; text-align: left; }
         th { background-color: #333; color: #fff; }
-        @media (max-width: 600px) {
-            table, thead, tbody, th, td, tr { display: block; }
-            th { position: sticky; top: 0; }
-            td { border: none; padding: 8px 10px; }
-        }
     </style>
 </head>
 <body>
     <h1>Programación de la Televisión Española</h1>
+
+    <h2>Programa Actual</h2>
+    <table id="current-programs" class="display">
+        <thead>
+            <tr>
+                <th>Canal</th>
+                <th>Inicio</th>
+                <th>Fin</th>
+                <th>Título</th>
+            </tr>
+        </thead>
+        <tbody>
 """
 
-for canal, programas in programacion.items():
-    html_content += f"<div class='canal'>\n<h2>{canal}</h2>\n<table>\n<tr><th>Inicio</th><th>Fin</th><th>Programa</th></tr>\n"
-    for prog in programas:
-        html_content += f"<tr><td>{prog['inicio']}</td><td>{prog['fin']}</td><td>{prog['titulo']}</td></tr>\n"
-    html_content += "</table>\n</div>\n"
+# Mostrar programas actuales en emisión
+for program in current_programs:
+    html_content += f"""
+    <tr>
+        <td>{program['canal']}</td>
+        <td>{program['inicio']}</td>
+        <td>{program['fin']}</td>
+        <td>{program['titulo']}</td>
+    </tr>
+    """
 
 html_content += """
+        </tbody>
+    </table>
+
+    <h2>Próximos Programas</h2>
+    <table id="next-programs" class="display">
+        <thead>
+            <tr>
+                <th>Canal</th>
+                <th>Inicio</th>
+                <th>Fin</th>
+                <th>Título</th>
+            </tr>
+        </thead>
+        <tbody>
+"""
+
+# Mostrar los próximos programas
+for program in next_programs:
+    html_content += f"""
+    <tr>
+        <td>{program['canal']}</td>
+        <td>{program['inicio']}</td>
+        <td>{program['fin']}</td>
+        <td>{program['titulo']}</td>
+    </tr>
+    """
+
+html_content += """
+        </tbody>
+    </table>
+
+    <script>
+        $(document).ready(function() {
+            $('#current-programs').DataTable();
+            $('#next-programs').DataTable();
+        });
+    </script>
 </body>
 </html>
 """
 
-# Guardar como index.html
-with open('archivo.xml', 'r', encoding='latin1') as f:
-    xml_data = f.read()
+# Guardar el archivo HTML
+with open("programacion_tv.html", "w", encoding="utf-8") as f:
+    f.write(html_content)
+
+print("El archivo HTML se ha generado con éxito.")
