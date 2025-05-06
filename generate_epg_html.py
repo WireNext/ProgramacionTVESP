@@ -82,5 +82,5 @@ html_content += """
 """
 
 # Guardar como index.html
-with open("index.html", "w", encoding="utf-8") as f:
-    f.write(html_content)
+with open('archivo.xml', 'r', encoding='latin1') as f:
+    xml_data = f.read()
