@@ -19,21 +19,11 @@ with gzip.open("TV.xml.gz", "rb") as f:
 # Limpiar caracteres problemáticos antes de parsear
 cleaned_data = re.sub(r'[^\x00-\x7F]+', '', xml_data.decode('utf-8', 'ignore'))
 
-# Leer el XML línea por línea y eliminar las líneas con caracteres no válidos
-cleaned_lines = []
-for line in cleaned_data.splitlines():
-    try:
-        # Intentar parsear cada línea
-        ET.fromstring(f"<root>{line}</root>")
-        cleaned_lines.append(line)
-    except ET.ParseError:
-        # Si la línea no es válida, la ignoramos
-        print(f"Se omitió una línea inválida: {line[:50]}...")
+# Eliminar todo lo que esté antes del primer <tv> (o <root> si es el caso)
+cleaned_data = cleaned_data.split("<tv>")[-1]  # Tomamos solo lo que está después de <tv>
+cleaned_data = "<tv>" + cleaned_data  # Añadimos de nuevo el <tv> de apertura
 
-# Volver a unir las líneas limpiadas
-cleaned_data = "\n".join(cleaned_lines)
-
-# Intentar parsear el XML completo
+# Intentamos parsear el XML
 try:
     root = ET.fromstring(cleaned_data)
 except ET.ParseError as e:
