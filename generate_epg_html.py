@@ -1,7 +1,7 @@
 import gzip
 import requests
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytz
 from lxml import etree  # Usamos lxml en lugar de xml.etree.ElementTree
 
