@@ -74,14 +74,19 @@ html_content = """
     <meta charset="UTF-8">
     <title>Programación TV España</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary-color: #3498db;
-            --secondary-color: #2980b9;
-            --background-color: #f8f9fa;
+            --primary-color: #e50914;
+            --secondary-color: #b00710;
+            --background-color: #f5f5f5;
             --text-color: #333;
-            --border-color: #ddd;
+            --border-color: #e1e1e1;
             --hover-color: #f1f1f1;
+            --time-marker: #e50914;
+            --current-program: #fff8e1;
+            --channel-tab-active: white;
+            --channel-tab-inactive: #f5f5f5;
         }
         
         * {
@@ -91,221 +96,303 @@ html_content = """
         }
         
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Roboto', sans-serif;
             line-height: 1.6;
             color: var(--text-color);
             background-color: var(--background-color);
-            padding: 20px;
+            padding: 0;
         }
         
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
             padding: 0 15px;
         }
         
-        h1 {
-            text-align: center;
-            margin: 30px 0;
-            color: var(--primary-color);
-            font-weight: 300;
-        }
-        
-        .accordion {
-            width: 100%;
-            margin-bottom: 20px;
-            border-radius: 5px;
-            overflow: hidden;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-        }
-        
-        .accordion-item {
-            margin-bottom: 5px;
-            background: white;
-        }
-        
-        .accordion-header {
-            padding: 15px 20px;
+        header {
             background-color: var(--primary-color);
             color: white;
-            cursor: pointer;
-            font-size: 18px;
-            transition: all 0.3s ease;
+            padding: 15px 0;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            font-weight: 500;
+            font-size: 28px;
+        }
+        
+        .time-marker {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: var(--time-marker);
+            color: white;
+            padding: 3px 10px;
+            border-radius: 0 0 4px 4px;
+            font-size: 12px;
+            font-weight: bold;
+            z-index: 10;
+        }
+        
+        .channels-container {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
+            position: relative;
+            margin-top: 40px;
         }
         
-        .accordion-header:hover {
-            background-color: var(--secondary-color);
+        .channel-tabs {
+            width: 150px;
+            flex-shrink: 0;
+            border-right: 1px solid var(--border-color);
+            background: var(--channel-tab-inactive);
         }
         
-        .accordion-header::after {
-            content: '+';
-            font-size: 20px;
-            transition: transform 0.3s ease;
-        }
-        
-        .accordion-item.active .accordion-header::after {
-            content: '-';
-        }
-        
-        .accordion-content {
-            padding: 0;
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.3s ease;
-        }
-        
-        .accordion-item.active .accordion-content {
-            max-height: 1000px;
-        }
-        
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 14px;
-        }
-        
-        th, td {
-            padding: 12px 15px;
-            text-align: left;
+        .channel-tab {
+            padding: 15px 10px;
             border-bottom: 1px solid var(--border-color);
-        }
-        
-        th {
-            background-color: var(--hover-color);
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
             font-weight: 500;
         }
         
-        tr:hover {
+        .channel-tab:hover {
             background-color: var(--hover-color);
         }
         
-        .channel-name {
-            font-weight: bold;
-            color: var(--secondary-color);
+        .channel-tab.active {
+            background-color: var(--channel-tab-active);
+            font-weight: 700;
+            border-right: 3px solid var(--primary-color);
         }
         
-        .now-playing {
-            background-color: #e8f4fc;
+        .programs-container {
+            flex-grow: 1;
+            overflow-x: auto;
+            position: relative;
         }
         
-        .time {
-            font-family: monospace;
+        .timeline {
+            display: flex;
+            min-width: max-content;
+            position: relative;
+            padding-top: 40px;
+        }
+        
+        .time-slot {
+            width: 80px;
+            flex-shrink: 0;
+            text-align: center;
+            font-size: 12px;
             color: #666;
+            padding: 5px;
+            border-right: 1px dashed var(--border-color);
+        }
+        
+        .programs-grid {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .channel-programs {
+            display: flex;
+            height: 60px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .program {
+            padding: 8px 5px;
+            border-right: 1px solid var(--border-color);
+            overflow: hidden;
+            font-size: 13px;
+            position: relative;
+        }
+        
+        .program.current {
+            background-color: var(--current-program);
+            font-weight: 500;
+        }
+        
+        .program-title {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .program-time {
+            font-size: 11px;
+            color: #666;
+            margin-top: 3px;
+        }
+        
+        .now-label {
+            position: absolute;
+            top: -20px;
+            left: 0;
+            font-size: 11px;
+            color: var(--time-marker);
+            font-weight: bold;
         }
         
         @media (max-width: 768px) {
-            th, td {
-                padding: 8px 10px;
-                font-size: 13px;
+            .channel-tabs {
+                width: 120px;
             }
             
-            .accordion-header {
-                padding: 12px 15px;
-                font-size: 16px;
+            .time-slot {
+                width: 60px;
+            }
+            
+            .channel-tab {
+                padding: 12px 8px;
+                font-size: 13px;
             }
         }
     </style>
 </head>
 <body>
+    <header>
+        <div class="container">
+            <h1>Guía de Programación TV</h1>
+        </div>
+    </header>
+    
     <div class="container">
-        <h1>Programación de la Televisión Española</h1>
+        <div class="time-marker">Ahora: """ + now.strftime("%H:%M") + """</div>
         
-        <div class="accordion">
-            <div class="accordion-item">
-                <div class="accordion-header">Programación Actual</div>
-                <div class="accordion-content">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Canal</th>
-                                <th>Horario</th>
-                                <th>Programa</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-"""
-
-# Mostrar programas actuales en emisión
-for program in current_programs:
-    html_content += f"""
-                            <tr class="now-playing">
-                                <td class="channel-name">{program['canal']}</td>
-                                <td class="time">{program['inicio']} - {program['fin']}</td>
-                                <td><strong>{program['titulo']}</strong></td>
-                            </tr>
-    """
-
-html_content += """
-                        </tbody>
-                    </table>
-                </div>
+        <div class="channels-container">
+            <div class="channel-tabs" id="channelTabs">
+                <!-- Pestañas de canales se generarán con JavaScript -->
             </div>
             
-            <div class="accordion-item">
-                <div class="accordion-header">Próximos Programas</div>
-                <div class="accordion-content">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Canal</th>
-                                <th>Horario</th>
-                                <th>Programa</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-"""
-
-# Mostrar los próximos programas
-for program in next_programs:
-    html_content += f"""
-                            <tr>
-                                <td class="channel-name">{program['canal']}</td>
-                                <td class="time">{program['inicio']} - {program['fin']}</td>
-                                <td>{program['titulo']}</td>
-                            </tr>
-    """
-
-html_content += """
-                        </tbody>
-                    </table>
+            <div class="programs-container">
+                <div class="timeline" id="timeline">
+                    <!-- Franjas horarias se generarán con JavaScript -->
+                </div>
+                
+                <div class="programs-grid" id="programsGrid">
+                    <!-- Programación se generará con JavaScript -->
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const accordionItems = document.querySelectorAll('.accordion-item');
+        // Datos de programación
+        const currentPrograms = """ + str(current_programs) + """;
+        const nextPrograms = """ + str(next_programs) + """;
+        
+        // Procesar datos para la visualización
+        const allPrograms = [...currentPrograms, ...nextPrograms];
+        const channels = [...new Set(allPrograms.map(p => p['canal']))];
+        
+        // Generar franjas horarias
+        function generateTimeSlots() {
+            const timeline = document.getElementById('timeline');
+            timeline.innerHTML = '';
             
-            accordionItems.forEach(item => {
-                const header = item.querySelector('.accordion-header');
+            // Crear franjas cada 30 minutos desde las 6:00 hasta las 00:00
+            for (let hour = 6; hour <= 24; hour++) {
+                const hourStr = hour === 24 ? '00' : String(hour).padStart(2, '0');
+                timeline.innerHTML += `
+                    <div class="time-slot">${hourStr}:00</div>
+                    <div class="time-slot">${hourStr}:30</div>
+                `;
+            }
+        }
+        
+        // Generar pestañas de canales
+        function generateChannelTabs() {
+            const channelTabs = document.getElementById('channelTabs');
+            channelTabs.innerHTML = '';
+            
+            channels.forEach((channel, index) => {
+                channelTabs.innerHTML += `
+                    <div class="channel-tab ${index === 0 ? 'active' : ''}" 
+                         data-channel="${channel}" 
+                         onclick="showChannel('${channel}')">
+                        ${channel}
+                    </div>
+                `;
+            });
+        }
+        
+        // Generar la programación
+        function generateProgramsGrid() {
+            const programsGrid = document.getElementById('programsGrid');
+            programsGrid.innerHTML = '';
+            
+            channels.forEach(channel => {
+                const channelPrograms = allPrograms.filter(p => p['canal'] === channel);
+                const channelRow = document.createElement('div');
+                channelRow.className = 'channel-programs';
+                channelRow.id = `channel-${channel.replace(/\s+/g, '-')}`;
+                channelRow.style.display = 'none';
                 
-                header.addEventListener('click', () => {
-                    const currentlyActive = document.querySelector('.accordion-item.active');
-                    
-                    // Si el item clickeado ya está activo, lo cerramos
-                    if (currentlyActive && currentlyActive === item) {
-                        currentlyActive.classList.remove('active');
-                        return;
-                    }
-                    
-                    // Cerramos el item activo (si hay alguno)
-                    if (currentlyActive) {
-                        currentlyActive.classList.remove('active');
-                    }
-                    
-                    // Abrimos el item clickeado
-                    item.classList.add('active');
+                // Ordenar programas por hora de inicio
+                channelPrograms.sort((a, b) => {
+                    return a['inicio'].localeCompare(b['inicio']);
                 });
+                
+                // Crear celdas de programa
+                channelPrograms.forEach(program => {
+                    const startTime = new Date(`2000-01-01T${program['inicio']}:00`);
+                    const endTime = new Date(`2000-01-01T${program['fin']}:00`);
+                    
+                    // Calcular duración en minutos
+                    const duration = (endTime - startTime) / (1000 * 60);
+                    const width = (duration / 30) * 80; // 80px = 30 minutos
+                    
+                    const isCurrent = currentPrograms.some(p => 
+                        p['canal'] === program['canal'] && 
+                        p['titulo'] === program['titulo']
+                    );
+                    
+                    channelRow.innerHTML += `
+                        <div class="program ${isCurrent ? 'current' : ''}" style="width: ${width}px">
+                            ${isCurrent ? '<div class="now-label">AHORA</div>' : ''}
+                            <div class="program-title">${program['titulo']}</div>
+                            <div class="program-time">${program['inicio']} - ${program['fin']}</div>
+                        </div>
+                    `;
+                });
+                
+                programsGrid.appendChild(channelRow);
             });
             
-            // Abrir el primer item por defecto
-            if (accordionItems.length > 0) {
-                accordionItems[0].classList.add('active');
+            // Mostrar el primer canal por defecto
+            if (channels.length > 0) {
+                showChannel(channels[0]);
             }
+        }
+        
+        // Mostrar programación de un canal específico
+        function showChannel(channelName) {
+            // Actualizar pestañas activas
+            document.querySelectorAll('.channel-tab').forEach(tab => {
+                tab.classList.remove('active');
+                if (tab.dataset.channel === channelName) {
+                    tab.classList.add('active');
+                }
+            });
+            
+            // Ocultar todas las filas de programación
+            document.querySelectorAll('.channel-programs').forEach(row => {
+                row.style.display = 'none';
+            });
+            
+            // Mostrar la fila del canal seleccionado
+            const channelId = `channel-${channelName.replace(/\s+/g, '-')}`;
+            document.getElementById(channelId).style.display = 'flex';
+        }
+        
+        // Inicializar la guía
+        document.addEventListener('DOMContentLoaded', () => {
+            generateTimeSlots();
+            generateChannelTabs();
+            generateProgramsGrid();
         });
     </script>
 </body>
