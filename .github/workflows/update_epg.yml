@@ -32,3 +32,9 @@ jobs:
           git add index.html
           git commit -m "Actualizar programación EPG"
           git push
+
+      - name: Add and commit changes
+        run: |
+          git add .
+          git commit -m "Agregar archivos EPG y la programación generada" || echo "No hay cambios para commit"
+          git push
