@@ -69,4 +69,16 @@ html_content = """
 """
 
 for canal, programas in programacion.items():
-    html_content += f"<div class_
+    html_content += f"<div class='canal'>\n<h2>{canal}</h2>\n<table>\n<tr><th>Inicio</th><th>Fin</th><th>Programa</th></tr>\n"
+    for prog in programas:
+        html_content += f"<tr><td>{prog['inicio']}</td><td>{prog['fin']}</td><td>{prog['titulo']}</td></tr>\n"
+    html_content += "</table>\n</div>\n"
+
+html_content += """
+</body>
+</html>
+"""
+
+# Guardar en index.html
+with open("index.html", "w", encoding="utf-8") as f:
+    f.write(html_content)
