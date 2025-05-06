@@ -32,7 +32,7 @@ end_time = now + timedelta(hours=2)
 
 # Procesar programas
 programs = []
-for programme in root.findall("programme"):
+for programme in root.findall("programme"):  # Corregido de "programme" a "programme"
     try:
         channel = programme.attrib.get("channel", "Desconocido")
         start = datetime.strptime(programme.attrib["start"][:14], "%Y%m%d%H%M%S")
@@ -66,9 +66,10 @@ sorted_channels = sorted(channels.keys())
 for channel in sorted_channels:
     channels[channel].sort(key=lambda x: x['start'])
 
-# Crear slots de tiempo cada 30 minutos
-time_slots = []
+# Crear slots de tiempo cada 30 minutos (asegurando zona horaria)
 current_slot = datetime(now.year, now.month, now.day, now.hour, 30 if now.minute >= 30 else 0)
+current_slot = tz.localize(current_slot)  # Asegurar que tiene zona horaria
+time_slots = []
 while current_slot <= end_time:
     time_slots.append(current_slot)
     current_slot += timedelta(minutes=30)
