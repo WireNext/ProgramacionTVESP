@@ -1,6 +1,6 @@
 import gzip
 import requests
-import xml.etree.ElementTree as ET
+from lxml import etree
 from datetime import datetime
 import pytz
 
@@ -15,14 +15,15 @@ with open("TV.xml.gz", "wb") as f:
 with gzip.open("TV.xml.gz", "rb") as f:
     xml_data = f.read()
 
-# Parsear el XML
-root = ET.fromstring(xml_data)
+# Parsear el XML con lxml para evitar errores
+parser = etree.XMLParser(recover=True, encoding="utf-8")
+root = etree.fromstring(xml_data, parser=parser)
 
-# Obtener la hora actual en zona horaria de Madrid
+# Obtener hora actual en la zona horaria de Madrid
 tz = pytz.timezone("Europe/Madrid")
 now = datetime.now(tz)
 
-# Crear un diccionario para almacenar la programación por canal
+# Diccionario para la programación actual por canal
 programacion = {}
 
 for programme in root.findall("programme"):
@@ -33,7 +34,8 @@ for programme in root.findall("programme"):
     fin = tz.localize(fin)
 
     if inicio <= now <= fin:
-        titulo = programme.find("title").text if programme.find("title") is not None else "Sin título"
+        titulo_el = programme.find("title")
+        titulo = titulo_el.text if titulo_el is not None else "Sin título"
         if canal not in programacion:
             programacion[canal] = []
         programacion[canal].append({
@@ -79,6 +81,6 @@ html_content += """
 </html>
 """
 
-# Guardar en index.html
+# Guardar como index.html
 with open("index.html", "w", encoding="utf-8") as f:
     f.write(html_content)
