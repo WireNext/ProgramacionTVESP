@@ -191,7 +191,7 @@ html_content = f"""
         .channel-name {{
             position: absolute;
             left: 0;
-            width: 180px;
+            width: 220px;
             padding: 10px 15px;
             background: #f8f9fa;
             font-weight: 600;
@@ -205,7 +205,7 @@ html_content = f"""
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }}
         .programs-container {{
-            margin-left: 190px;
+            margin-left: 230px;
             position: relative;
             height: {ROW_HEIGHT}px;
             overflow: visible;
