@@ -82,7 +82,7 @@ while current_slot <= end_time:
 
 # Función para calcular posición y ancho sin solapamientos
 def calculate_program_positions(programs, time_slots):
-  positions = []
+    positions = []
     rows = []
 
     for program in programs:
