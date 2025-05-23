@@ -82,25 +82,26 @@ while current_slot <= end_time:
 
 # Función para calcular posición y ancho sin solapamientos
 def calculate_program_positions(programs, time_slots):
-    positioned_programs = []
+  positions = []
+    rows = []
+
     for program in programs:
-        start_pos = max(0, ((program['start'] - time_slots[0]).total_seconds() / 1800) * COLUMN_WIDTH)
-        end_pos = ((program['end'] - time_slots[0]).total_seconds() / 1800) * COLUMN_WIDTH
-        width = max(MIN_PROGRAM_WIDTH, end_pos - start_pos)
-        
-        # Buscar posición vertical disponible (para evitar solapamientos)
-        vertical_pos = 0
-        for other in positioned_programs:
-            if not (end_pos <= other['left'] or start_pos >= other['left'] + other['width']):
-                vertical_pos = max(vertical_pos, other['top'] + ROW_HEIGHT)
-        
-        positioned_programs.append({
-            'program': program,
-            'left': start_pos,
-            'width': width,
-            'top': vertical_pos
-        })
-    
+        start_index = next((i for i, t in enumerate(time_slots) if t >= program['start']), len(time_slots)-1)
+        end_index = next((i for i, t in enumerate(time_slots) if t > program['end']), len(time_slots))
+        left = start_index * TIME_SLOT_WIDTH
+        width = (end_index - start_index) * TIME_SLOT_WIDTH
+
+        top = 0
+        for i, row in enumerate(rows):
+            if all(p['program']['end'] <= program['start'] or p['program']['start'] >= program['end'] for p in row):
+                row.append({'program': program, 'left': left, 'width': width, 'top': i * ROW_HEIGHT})
+                top = i * ROW_HEIGHT
+                break
+        else:
+            rows.append([{'program': program, 'left': left, 'width': width, 'top': len(rows) * ROW_HEIGHT}])
+            top = (len(rows) - 1) * ROW_HEIGHT
+
+        positions.append({'program': program, 'left': left, 'width': width, 'top': top})
     return positioned_programs
 
 # Generar HTML
