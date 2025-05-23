@@ -70,7 +70,7 @@ for program in programs:
 # Ordenar canales y programas
 sorted_channels = sorted(channels.keys())
 for channel in sorted_channels:
-    channels[channel].sort(key=lambda x: x['start'])
+    positioned = calculate_program_positions(channels[channel], time_slots)
 
 # Crear slots de tiempo cada 30 minutos
 current_slot = datetime(now.year, now.month, now.day, now.hour, 30 if now.minute >= 30 else 0)
