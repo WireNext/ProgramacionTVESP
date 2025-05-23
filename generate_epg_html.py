@@ -267,7 +267,7 @@ html_content = f"""
     <div class="container">
         <header>
             <h1>Programación TV</h1>
-            <div class="time-display">Actualizado: {now.strftime('%H:%M')}</div>
+            <div class="time-display">Actualizado: --:--</div>
         </header>
         
         <div class="program-view">
@@ -311,6 +311,20 @@ html_content = f"""
             </div>
         </div>
     </div>
+    <script>
+        function updateTimeDisplay() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const display = document.querySelector('.time-display');
+            if (display) {
+                display.textContent = 'Actualizado: ' + hours + ':' + minutes;
+            }
+        }
+
+        updateTimeDisplay(); // Ejecutar al cargar
+        setInterval(updateTimeDisplay, 60000); // Actualizar cada minuto
+    </script>
 </body>
 </html>
 """
