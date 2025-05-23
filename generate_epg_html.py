@@ -84,7 +84,7 @@ while current_slot <= end_time:
 def calculate_program_positions(programs, time_slots):
     positioned_programs = []
     for program in programs:
-        start_pos = max(0, ((program['start'] - time_slots[0]).total_seconds() / 1800) * COLUMN_WIDTH
+        start_pos = max(0, ((program['start'] - time_slots[0]).total_seconds() / 1800) * COLUMN_WIDTH)
         end_pos = ((program['end'] - time_slots[0]).total_seconds() / 1800) * COLUMN_WIDTH
         width = max(MIN_PROGRAM_WIDTH, end_pos - start_pos)
         
