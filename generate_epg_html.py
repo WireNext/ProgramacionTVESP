@@ -311,6 +311,11 @@ html_content = f"""
             </div>
         </div>
     </div>
+</body>
+</html>
+"""
+
+html_content += '''
     <script>
         function updateTimeDisplay() {
             const now = new Date();
@@ -327,7 +332,7 @@ html_content = f"""
     </script>
 </body>
 </html>
-"""
+'''
 
 with open("programacion.html", "w", encoding="utf-8") as f:
     f.write(html_content)
