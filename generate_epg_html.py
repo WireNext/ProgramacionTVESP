@@ -212,6 +212,7 @@ html_content = f"""
             overflow: visible;
         }}
         .program {{
+            padding-left: 10px;
             position: absolute;
             padding: {PROGRAM_PADDING}px;
             border-radius: 6px;
