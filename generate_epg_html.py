@@ -188,29 +188,27 @@ html_content = f"""
             position: relative;
             min-height: {ROW_HEIGHT}px;
         }}
-        .channel-name {{
-            position: absolute;
-            left: 0;
-            width: 220px;
-            min-width: 220px;
-            padding: 10px 15px;
-            background: #f8f9fa;
-            font-weight: 600;
-            color: #2c3e50;
-            height: {ROW_HEIGHT}px;
-            box-sizing: border-box;
-            display: flex;
-            align-items: center;
-            border-radius: 5px;
-            z-index: 20;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        .channel-name {}
+          position: absolute;
+          left: 0;
+          width: 220px;  /* fijo */
+          min-width: 220px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          z-index: 10; /* para que siempre quede por encima */
+          background: white; /* para tapar programas debajo */
+          border-right: 1px solid #ccc;
+          padding-left: 5px;
+          padding-right: 5px;
         }}
-        .programs-container {{
-            margin-left: 220px;
-            position: relative;
-            height: {ROW_HEIGHT}px;
-            overflow: visible;
-        }}
+        
+        .programs-container {}
+          margin-left: 220px;  /* margen igual a ancho de nombre */
+          position: relative;
+          z-index: 1;
+}}
+
         .program {{
             padding-left: 10px;
             position: absolute;
