@@ -208,7 +208,7 @@ html_content = f"""
 """
 
 # Guardar en archivo
-with open("guia_tv.html", "w", encoding="utf-8") as f:
+with open("programacion.html", "w", encoding="utf-8") as f:
     f.write(html_content)
 
-print("✅ HTML generado correctamente en 'guia_tv.html'")
+print("✅ HTML generado correctamente en 'programacion.html'")
