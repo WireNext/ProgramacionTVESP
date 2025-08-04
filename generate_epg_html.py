@@ -7,7 +7,8 @@ from lxml import etree
 
 # Configuración de diseño
 CHANNEL_COLUMN_WIDTH = 220
-TIMELINE_SLOT_MINUTES = 30
+# Granularidad de la cuadrícula en minutos. Usamos 5 minutos para mayor precisión.
+GRID_SLOT_MINUTES = 5
 
 # Descargar y descomprimir XML
 EPG_URL = "https://www.tdtchannels.com/epg/TV.xml.gz"
@@ -35,6 +36,7 @@ except etree.XMLSyntaxError as e:
 # Configuración de hora
 tz = pytz.timezone("Europe/Madrid")
 now = datetime.now(tz)
+# Ventana de tiempo: 30 minutos antes de ahora y 3 horas después
 start_time_window = now - timedelta(minutes=30)
 end_time_window = now + timedelta(hours=3)
 
@@ -77,18 +79,22 @@ for program in programs:
 # Obtener nombres de los canales del XML
 channel_names = {channel.attrib.get("id"): channel.find("display-name").text for channel in root.findall("channel")}
 
-# Crear franjas horarias (cada 30 minutos)
+# Crear franjas horarias
 # El inicio de la línea de tiempo se ajusta a la media hora más cercana o a la hora
 timeline_start = datetime(now.year, now.month, now.day, now.hour, 30 if now.minute > 30 else 0)
 timeline_start = tz.localize(timeline_start)
 timeline_end = timeline_start + timedelta(hours=3, minutes=30)
 
-time_slots = []
+# Generar los slots de la línea de tiempo para el header (cada 30 min)
+header_time_slots = []
 current_slot = timeline_start
 while current_slot < timeline_end:
-    time_slots.append(current_slot)
-    current_slot += timedelta(minutes=TIMELINE_SLOT_MINUTES)
-    
+    header_time_slots.append(current_slot)
+    current_slot += timedelta(minutes=30)
+
+# Calcular el número total de columnas para la cuadrícula (granularidad de 5 minutos)
+total_grid_columns = int((timeline_end - timeline_start).total_seconds() / 60 / GRID_SLOT_MINUTES)
+
 # Función para calcular las posiciones en la cuadrícula
 def calculate_grid_positions(programs, timeline_start):
     positioned_programs = []
@@ -101,10 +107,14 @@ def calculate_grid_positions(programs, timeline_start):
         start_offset_minutes = (program['start'] - timeline_start).total_seconds() / 60
         
         # Calcular la columna de inicio
-        start_column = int(start_offset_minutes / TIMELINE_SLOT_MINUTES) + timeline_offset
+        start_column = int(start_offset_minutes / GRID_SLOT_MINUTES) + timeline_offset
         
         # Calcular el número de columnas que ocupa
-        num_columns = int(duration_minutes / TIMELINE_SLOT_MINUTES)
+        num_columns = int(duration_minutes / GRID_SLOT_MINUTES)
+        
+        if num_columns == 0:
+            # Los programas muy cortos aún necesitan ocupar al menos una columna
+            num_columns = 1
         
         positioned_programs.append({
             'program': program,
@@ -149,7 +159,7 @@ html_content = f"""
     <title>Programación TV</title>
     <style>
         body {{
-            font-family: Arial, sans-serif;
+            font-family: 'Inter', sans-serif;
             background: #f5f7fa;
             margin: 0;
             padding: 20px;
@@ -160,27 +170,32 @@ html_content = f"""
             border-radius: 10px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             overflow: hidden;
+            width: 95%;
+            margin: auto;
         }}
         /* Estilos de cuadrícula para una maquetación perfecta */
         .grid-container {{
             display: grid;
-            grid-template-columns: {CHANNEL_COLUMN_WIDTH}px repeat({len(time_slots)}, 1fr);
-            gap: 10px;
+            grid-template-columns: {CHANNEL_COLUMN_WIDTH}px repeat({total_grid_columns}, 1fr);
+            gap: 5px; /* Reducimos el espacio entre elementos para aprovechar mejor el espacio */
             position: relative;
         }}
         .timeline {{
             grid-column: 2 / -1; /* Ocupa todas las columnas de la línea de tiempo */
-            display: flex;
-            justify-content: space-around;
+            display: grid;
+            grid-template-columns: repeat({len(header_time_slots)}, 1fr);
+            gap: 5px;
+            justify-items: center;
             align-items: center;
             padding-bottom: 10px;
             border-bottom: 1px solid #ddd;
+            margin-bottom: 10px;
         }}
         .time-slot {{
-            flex-grow: 1;
             text-align: center;
             font-size: 14px;
             color: #555;
+            grid-column: span 6; /* Cada slot de 30 min ocupa 6 columnas de 5 min */
         }}
         .channel-name {{
             font-weight: bold;
@@ -231,7 +246,7 @@ html_content = f"""
         <p>Actualizado: {now.strftime('%d/%m/%Y %H:%M')}</p>
         <div class="grid-container">
             <div class="timeline">
-                {''.join(f'<div class="time-slot">{slot.strftime("%H:%M")}</div>' for slot in time_slots)}
+                {''.join(f'<div class="time-slot">{slot.strftime("%H:%M")}</div>' for slot in header_time_slots)}
             </div>
             {channel_blocks}
         </div>
