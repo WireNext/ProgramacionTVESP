@@ -116,6 +116,12 @@ def calculate_grid_positions(programs, timeline_start):
             # Los programas muy cortos aún necesitan ocupar al menos una columna
             num_columns = 1
         
+        # Garantizamos que el programa no se salga de la cuadrícula
+        if (start_column + num_columns) > (total_grid_columns + timeline_offset):
+            num_columns = (total_grid_columns + timeline_offset) - start_column
+            if num_columns < 1:
+                 continue # Ignorar programas que empiezan fuera de la ventana
+
         positioned_programs.append({
             'program': program,
             'grid_column_start': start_column,
@@ -156,6 +162,7 @@ html_content = f"""
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Programación TV</title>
     <style>
         body {{
@@ -169,27 +176,36 @@ html_content = f"""
             padding: 20px;
             border-radius: 10px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            overflow: hidden;
-            width: 95%;
-            margin: auto;
+            overflow-x: auto; /* Permite scroll horizontal si es necesario */
+            width: 100%;
+            box-sizing: border-box;
         }}
         /* Estilos de cuadrícula para una maquetación perfecta */
         .grid-container {{
             display: grid;
             grid-template-columns: {CHANNEL_COLUMN_WIDTH}px repeat({total_grid_columns}, 1fr);
-            gap: 5px; /* Reducimos el espacio entre elementos para aprovechar mejor el espacio */
+            gap: 5px; 
             position: relative;
+            grid-auto-rows: minmax(90px, auto); /* Cada fila tiene una altura mínima */
+            min-width: 1000px; /* Asegura un ancho mínimo para evitar compresión en pantallas pequeñas */
+        }}
+        .header-row {{
+            grid-column: 1 / -1; /* Ocupa todas las columnas */
+            display: grid;
+            grid-template-columns: {CHANNEL_COLUMN_WIDTH}px repeat({total_grid_columns}, 1fr);
+            gap: 5px;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 10px;
+        }}
+        .header-row .time-placeholder {{
+            grid-column: 1 / 2;
         }}
         .timeline {{
-            grid-column: 2 / -1; /* Ocupa todas las columnas de la línea de tiempo */
+            grid-column: 2 / -1;
             display: grid;
             grid-template-columns: repeat({len(header_time_slots)}, 1fr);
             gap: 5px;
             justify-items: center;
-            align-items: center;
-            padding-bottom: 10px;
-            border-bottom: 1px solid #ddd;
-            margin-bottom: 10px;
         }}
         .time-slot {{
             text-align: center;
@@ -215,8 +231,8 @@ html_content = f"""
             box-shadow: 0 1px 2px rgba(0,0,0,0.1);
             height: 80px;
             overflow: hidden;
-            grid-row: span 1;
             align-self: center;
+            line-height: 1.2;
         }}
         .program.now {{
             background: #fff8e1;
@@ -237,6 +253,7 @@ html_content = f"""
             padding: 2px 6px;
             border-radius: 8px;
             margin-left: 6px;
+            display: inline-block;
         }}
     </style>
 </head>
@@ -244,10 +261,13 @@ html_content = f"""
     <div class="container">
         <h1>Programación TV</h1>
         <p>Actualizado: {now.strftime('%d/%m/%Y %H:%M')}</p>
-        <div class="grid-container">
+        <div class="header-row">
+            <div class="time-placeholder"></div>
             <div class="timeline">
                 {''.join(f'<div class="time-slot">{slot.strftime("%H:%M")}</div>' for slot in header_time_slots)}
             </div>
+        </div>
+        <div class="grid-container">
             {channel_blocks}
         </div>
     </div>
