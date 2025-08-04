@@ -6,115 +6,139 @@ import pytz
 from lxml import etree
 
 # Configuración de diseño
-COLUMN_WIDTH = 150
-ROW_HEIGHT = 90
-PROGRAM_PADDING = 8
-MIN_PROGRAM_WIDTH = 120
+CHANNEL_COLUMN_WIDTH = 220
+TIMELINE_SLOT_MINUTES = 30
 
 # Descargar y descomprimir XML
 EPG_URL = "https://www.tdtchannels.com/epg/TV.xml.gz"
-response = requests.get(EPG_URL)
-with open("TV.xml.gz", "wb") as f:
-    f.write(response.content)
+print("📥 Descargando EPG desde TV.xml.gz...")
+try:
+    response = requests.get(EPG_URL, timeout=10)
+    response.raise_for_status()
+    xml_data = gzip.decompress(response.content)
+except requests.exceptions.RequestException as e:
+    print(f"❌ Error al descargar el EPG: {e}")
+    exit(1)
 
-with gzip.open("TV.xml.gz", "rb") as f:
-    xml_data = f.read()
-
-# Limpiar XML
+# Limpiar XML y parsear
 cleaned_data = re.sub(r'[^\x00-\x7F]+', '', xml_data.decode('utf-8', 'ignore'))
+# A veces, el XML viene con un preámbulo, así que lo limpiamos para que sea válido
 cleaned_data = cleaned_data.split("<tv>")[-1]
 cleaned_data = "<tv>" + cleaned_data
 
 try:
     root = etree.fromstring(cleaned_data.encode(), parser=etree.XMLParser(recover=True))
 except etree.XMLSyntaxError as e:
-    print(f"Error al parsear el XML: {e}")
+    print(f"❌ Error al parsear el XML: {e}")
     exit(1)
 
 # Configuración de hora
 tz = pytz.timezone("Europe/Madrid")
 now = datetime.now(tz)
-end_time = now + timedelta(hours=3)
+start_time_window = now - timedelta(minutes=30)
+end_time_window = now + timedelta(hours=3)
 
-# Procesar programas
+# Procesar programas y filtrar por ventana de tiempo
 programs = []
 for programme in root.findall("programme"):
     try:
-        channel = programme.attrib.get("channel", "Desconocido")
-        start = datetime.strptime(programme.attrib["start"][:14], "%Y%m%d%H%M%S")
-        start = tz.localize(start)
-        end = datetime.strptime(programme.attrib["stop"][:14], "%Y%m%d%H%M%S")
-        end = tz.localize(end)
+        channel_id = programme.attrib.get("channel")
+        start_str = programme.attrib["start"][:14]
+        end_str = programme.attrib["stop"][:14]
+        
+        start = tz.localize(datetime.strptime(start_str, "%Y%m%d%H%M%S"))
+        end = tz.localize(datetime.strptime(end_str, "%Y%m%d%H%M%S"))
 
-        if end <= now or start >= end_time:
+        if end < start_time_window or start > end_time_window:
             continue
-
-        title = programme.find("title").text if programme.find("title") is not None else "Sin título"
+        
+        # Ignorar programas sin título
+        title_element = programme.find("title")
+        title = title_element.text if title_element is not None else "Sin título"
+        
         programs.append({
-            'channel': channel,
+            'channel_id': channel_id,
             'start': start,
             'end': end,
             'title': title,
             'is_current': now >= start and now <= end
         })
-    except Exception:
+    except (KeyError, ValueError, TypeError):
+        # Ignorar programas con datos inválidos
         continue
 
+print(f"✅ Programas procesados. Encontrados {len(programs)} programas en el rango de tiempo.")
+
 # Organizar por canales
-channels = {}
+channels_data = {}
 for program in programs:
-    channels.setdefault(program['channel'], []).append(program)
+    channels_data.setdefault(program['channel_id'], []).append(program)
 
-for channel in channels:
-    channels[channel].sort(key=lambda x: x['start'])
+# Obtener nombres de los canales del XML
+channel_names = {channel.attrib.get("id"): channel.find("display-name").text for channel in root.findall("channel")}
 
-# Crear franjas horarias cada 30 min
-current_slot = datetime(now.year, now.month, now.day, now.hour, 30 if now.minute >= 30 else 0)
-current_slot = tz.localize(current_slot)
+# Crear franjas horarias (cada 30 minutos)
+# El inicio de la línea de tiempo se ajusta a la media hora más cercana o a la hora
+timeline_start = datetime(now.year, now.month, now.day, now.hour, 30 if now.minute > 30 else 0)
+timeline_start = tz.localize(timeline_start)
+timeline_end = timeline_start + timedelta(hours=3, minutes=30)
+
 time_slots = []
-while current_slot <= end_time:
+current_slot = timeline_start
+while current_slot < timeline_end:
     time_slots.append(current_slot)
-    current_slot += timedelta(minutes=30)
-
-# Función de posicionamiento
-def calculate_program_positions(programs, time_slots):
-    positioned = []
+    current_slot += timedelta(minutes=TIMELINE_SLOT_MINUTES)
+    
+# Función para calcular las posiciones en la cuadrícula
+def calculate_grid_positions(programs, timeline_start):
+    positioned_programs = []
+    
+    # La columna 1 es para el nombre del canal. Los programas empiezan en la columna 2.
+    timeline_offset = 2
+    
     for program in programs:
-        start_pos = max(0, ((program['start'] - time_slots[0]).total_seconds() / 1800) * COLUMN_WIDTH)
-        end_pos = ((program['end'] - time_slots[0]).total_seconds() / 1800) * COLUMN_WIDTH
-        width = max(MIN_PROGRAM_WIDTH, end_pos - start_pos)
-
-        vertical_pos = 0
-        for other in positioned:
-            if not (end_pos <= other['left'] or start_pos >= other['left'] + other['width']):
-                vertical_pos = max(vertical_pos, other['top'] + ROW_HEIGHT)
-
-        positioned.append({
+        duration_minutes = (program['end'] - program['start']).total_seconds() / 60
+        start_offset_minutes = (program['start'] - timeline_start).total_seconds() / 60
+        
+        # Calcular la columna de inicio
+        start_column = int(start_offset_minutes / TIMELINE_SLOT_MINUTES) + timeline_offset
+        
+        # Calcular el número de columnas que ocupa
+        num_columns = int(duration_minutes / TIMELINE_SLOT_MINUTES)
+        
+        positioned_programs.append({
             'program': program,
-            'left': start_pos,
-            'width': width,
-            'top': vertical_pos
+            'grid_column_start': start_column,
+            'grid_column_span': num_columns
         })
-    return positioned
+        
+    return positioned_programs
 
 # Generar bloques HTML de canales y programas
 channel_blocks = ""
-for channel in sorted(channels.keys()):
-    channel_html = f'<div class="channel"><div class="channel-name">{channel}</div><div class="programs-container">'
-    positioned = calculate_program_positions(channels[channel], time_slots)
+for channel_id in sorted(channels_data.keys()):
+    channel_name = channel_names.get(channel_id, "Canal Desconocido")
+    
+    # Generar el bloque del nombre del canal
+    channel_blocks += f'<div class="channel-name">{channel_name}</div>'
+    
+    # Generar los programas de ese canal
+    positioned = calculate_grid_positions(channels_data[channel_id], timeline_start)
     for item in positioned:
         program = item['program']
-        channel_html += f'''
-        <div class="program {'now' if program['is_current'] else ''}" 
-             style="left: {item['left']}px; width: {item['width']}px; top: {item['top']}px">
-            <div class="program-title">{program['title']}
-                {'<span class="now-badge">AHORA</span>' if program['is_current'] else ''}
-            </div>
+        
+        # Construir el style para CSS Grid
+        style = f"grid-column: {item['grid_column_start']} / span {item['grid_column_span']};"
+        
+        is_current_class = "now" if program['is_current'] else ""
+        now_badge = '<span class="now-badge">AHORA</span>' if program['is_current'] else ''
+        
+        channel_blocks += f'''
+        <div class="program {is_current_class}" style="{style}">
+            <div class="program-title">{program['title']}{now_badge}</div>
             <div class="program-time">{program['start'].strftime('%H:%M')} - {program['end'].strftime('%H:%M')}</div>
         </div>
         '''
-    channel_html += "</div></div>"
-    channel_blocks += channel_html
 
 # HTML final
 html_content = f"""
@@ -135,42 +159,49 @@ html_content = f"""
             padding: 20px;
             border-radius: 10px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }}
+        /* Estilos de cuadrícula para una maquetación perfecta */
+        .grid-container {{
+            display: grid;
+            grid-template-columns: {CHANNEL_COLUMN_WIDTH}px repeat({len(time_slots)}, 1fr);
+            gap: 10px;
+            position: relative;
         }}
         .timeline {{
+            grid-column: 2 / -1; /* Ocupa todas las columnas de la línea de tiempo */
             display: flex;
-            margin-left: 220px;
+            justify-content: space-around;
+            align-items: center;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #ddd;
         }}
         .time-slot {{
-            min-width: {COLUMN_WIDTH}px;
+            flex-grow: 1;
             text-align: center;
             font-size: 14px;
             color: #555;
-            padding: 5px;
-        }}
-        .channel {{
-            position: relative;
-            margin-bottom: 30px;
         }}
         .channel-name {{
-            position: absolute;
-            left: 0;
-            width: 220px;
             font-weight: bold;
-        }}
-        .programs-container {{
-            margin-left: 220px;
-            position: relative;
-            min-height: {ROW_HEIGHT}px;
+            padding: 10px;
+            display: flex;
+            align-items: center;
+            grid-column: 1 / 2; /* Ocupa la primera columna */
+            text-overflow: ellipsis;
+            overflow: hidden;
+            white-space: nowrap;
         }}
         .program {{
-            position: absolute;
-            padding: {PROGRAM_PADDING}px;
+            padding: 8px;
             background: #e3f2fd;
             border-left: 4px solid #2196f3;
             border-radius: 6px;
             box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-            height: {ROW_HEIGHT - 10}px;
+            height: 80px;
             overflow: hidden;
+            grid-row: span 1;
+            align-self: center;
         }}
         .program.now {{
             background: #fff8e1;
@@ -198,10 +229,12 @@ html_content = f"""
     <div class="container">
         <h1>Programación TV</h1>
         <p>Actualizado: {now.strftime('%d/%m/%Y %H:%M')}</p>
-        <div class="timeline">
-            {''.join(f'<div class="time-slot">{slot.strftime("%H:%M")}</div>' for slot in time_slots)}
+        <div class="grid-container">
+            <div class="timeline">
+                {''.join(f'<div class="time-slot">{slot.strftime("%H:%M")}</div>' for slot in time_slots)}
+            </div>
+            {channel_blocks}
         </div>
-        {channel_blocks}
     </div>
 </body>
 </html>
