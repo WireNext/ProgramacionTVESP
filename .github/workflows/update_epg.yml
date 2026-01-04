@@ -1,37 +1,29 @@
-name: Actualizar EPG
-
+name: Actualizar Web EPG
 on:
   schedule:
-    - cron: '0 * * * *'  # Cada hora
-  workflow_dispatch:
+    - cron: '0 0 * * *' # Se ejecuta cada noche a las 00:00
+  workflow_dispatch: # Permite ejecutarlo manualmente
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Clonar repositorio
-        uses: actions/checkout@v2
+      - name: Checkout código
+        uses: actions/checkout@v3
 
       - name: Configurar Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
-          python-version: '3.x'
+          python-version: '3.9'
 
       - name: Instalar dependencias
-        run: |
-          pip install requests pytz
-          pip install lxml pytz requests
+        run: pip install requests
 
-      - name: Ejecutar script
-        run: python generate_epg_html.py
+      - name: Ejecutar script de generación
+        run: python generate_epg.py
 
-      - name: Set up Git configuration
-        run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
-
-      - name: Add and commit changes if any
-        run: |
-          git add TV.xml.gz programacion.html || echo "No new files to add"
-          git commit -m "Agregar archivos EPG y la programación generada" || echo "No changes to commit"
-          git push origin main
+      - name: Desplegar a GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./ # Sube el index.html generado
