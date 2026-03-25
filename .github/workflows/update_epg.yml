@@ -1,8 +1,8 @@
 name: Actualizar Web EPG
 on:
   schedule:
-    - cron: '0 0 * * *' # Se ejecuta cada noche a las 00:00
-  workflow_dispatch: # Permite ejecutarlo manualmente
+    - cron: '0 0 * * *'
+  workflow_dispatch:
 
 jobs:
   build:
@@ -22,8 +22,10 @@ jobs:
       - name: Ejecutar script de generación
         run: python epg.py
 
-      - name: Desplegar a GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./ # Sube el index.html generado
+      - name: Commit y push de archivos generados
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "EPG actualizado $(date +'%Y-%m-%d %H:%M')" || echo "Sin cambios"
+          git push
