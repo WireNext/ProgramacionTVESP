@@ -12,229 +12,329 @@
 </head>
 <body>
 
-  <!-- Loading screen -->
-  <div class="loading-screen" id="loadingScreen">
-    <div class="spinner"></div>
-    <span class="loading-text">Cargando programación…</span>
-  </div>
+<div class="loading-screen" id="loadingScreen">
+  <div class="spinner"></div>
+  <span class="loading-text">Cargando programación…</span>
+</div>
 
-  <div class="app-wrapper">
+<div class="app-wrapper">
 
-    <!-- ── HEADER ─────────────────────────────────────── -->
-    <header class="header">
-      <div class="header-top">
-        <div class="header-title">
-          <span class="logo-icon">📺</span>
-          <h1>Guía TDT</h1>
-        </div>
-        <div style="display:flex;align-items:center;gap:10px;">
-          <span class="header-meta" id="updatedTime">{{UPDATED}}</span>
-          <!-- Theme toggle -->
-          <label class="theme-toggle" title="Cambiar tema">
-            <input type="checkbox" id="themeToggle">
-            <span class="toggle-track"></span>
-            <span class="toggle-thumb" id="toggleThumb">🌙</span>
-          </label>
-        </div>
+  <header class="header">
+    <div class="header-top">
+      <div class="header-title">
+        <span>📺</span>
+        <h1>Guía TDT</h1>
       </div>
-
-      <!-- Search -->
-      <div class="search-wrapper">
-        <span class="search-icon">🔍</span>
-        <input type="search" id="search" placeholder="Buscar canal o programa…" autocomplete="off" spellcheck="false">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span class="header-meta" id="updatedTime">{{UPDATED}}</span>
+        <label class="theme-toggle" title="Cambiar tema">
+          <input type="checkbox" id="themeToggle">
+          <span class="toggle-track"></span>
+          <span class="toggle-thumb" id="toggleThumb">🌙</span>
+        </label>
       </div>
-
-      <!-- Stats -->
-      <div class="stats-bar" id="statsBar">
-        <span class="stat-chip" id="statCanales">📡 — canales</span>
-        <span class="stat-chip" id="statProgramas">🎬 — programas</span>
-        <span class="stat-chip" id="statAhora">🔴 En antena</span>
-      </div>
-    </header>
-
-    <!-- ── CHANNEL LIST ───────────────────────────────── -->
-    <main id="lista"></main>
-
-    <!-- Empty state -->
-    <div class="empty-state" id="emptyState">
-      <div class="empty-icon">🔭</div>
-      <p>No se encontraron resultados</p>
     </div>
 
+    <div class="search-wrapper">
+      <span class="search-icon">🔍</span>
+      <input type="search" id="search" placeholder="Buscar canal o programa…" autocomplete="off" spellcheck="false">
+      <button class="search-clear" id="searchClear" title="Borrar">✕</button>
+    </div>
+
+    <div class="filter-tabs" id="filterTabs">
+      <button class="tab-btn active" data-tab="todos" onclick="setTab('todos')">
+        Todos <span class="tab-count" id="countTodos">0</span>
+      </button>
+      <button class="tab-btn" data-tab="favoritos" onclick="setTab('favoritos')">
+        ⭐ Favoritos <span class="tab-count" id="countFavs">0</span>
+      </button>
+      <button class="tab-btn" data-tab="ahora" onclick="setTab('ahora')">
+        🔴 En antena <span class="tab-count" id="countAhora">0</span>
+      </button>
+    </div>
+  </header>
+
+  <main id="lista"></main>
+
+  <div class="empty-state" id="emptyState">
+    <div class="empty-icon" id="emptyIcon">🔭</div>
+    <p id="emptyMsg">No se encontraron resultados</p>
   </div>
 
-  <!-- Back to top -->
-  <button class="back-top" id="backTop" title="Volver arriba">↑</button>
+</div>
 
-  <script>
-  // ============================================================
-  // DATA INJECTED BY PYTHON
-  // ============================================================
-  const CHANNELS = {{CHANNELS_DATA}};
+<button class="back-top" id="backTop" title="Volver arriba">↑</button>
 
-  // ============================================================
-  // THEME
-  // ============================================================
-  const html       = document.documentElement;
-  const toggle     = document.getElementById('themeToggle');
-  const thumb      = document.getElementById('toggleThumb');
-  const metaTheme  = document.getElementById('meta-theme');
+<script>
+// ── DATA ──────────────────────────────────────────────────────
+const CHANNELS = {{CHANNELS_DATA}};
 
-  function applyTheme(dark) {
-    html.setAttribute('data-theme', dark ? 'dark' : 'light');
-    thumb.textContent = dark ? '🌙' : '☀️';
-    metaTheme.content = dark ? '#080c1a' : '#f0f4ff';
-    localStorage.setItem('epg-theme', dark ? 'dark' : 'light');
-    toggle.checked = dark;
+// ── THEME ─────────────────────────────────────────────────────
+const html      = document.documentElement;
+const toggle    = document.getElementById('themeToggle');
+const thumb     = document.getElementById('toggleThumb');
+const metaTheme = document.getElementById('meta-theme');
+
+function applyTheme(dark) {
+  html.setAttribute('data-theme', dark ? 'dark' : 'light');
+  thumb.textContent = dark ? '🌙' : '☀️';
+  metaTheme.content = dark ? '#080c1a' : '#f0f4ff';
+  localStorage.setItem('epg-theme', dark ? 'dark' : 'light');
+  toggle.checked = dark;
+}
+
+const savedTheme = localStorage.getItem('epg-theme');
+applyTheme(savedTheme ? savedTheme === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches);
+toggle.addEventListener('change', () => applyTheme(toggle.checked));
+
+// ── FAVORITES ─────────────────────────────────────────────────
+function getFavs() {
+  try { return new Set(JSON.parse(localStorage.getItem('epg-favs') || '[]')); }
+  catch { return new Set(); }
+}
+
+function saveFavs(set) {
+  localStorage.setItem('epg-favs', JSON.stringify([...set]));
+}
+
+function toggleFav(chId) {
+  const favs = getFavs();
+  if (favs.has(chId)) { favs.delete(chId); } else { favs.add(chId); }
+  saveFavs(favs);
+  // Update button in DOM
+  const card = document.querySelector(`.canal-card[data-id="${chId}"]`);
+  if (card) {
+    const btn = card.querySelector('.fav-btn');
+    const isFav = favs.has(chId);
+    btn.classList.toggle('active', isFav);
+    card.classList.toggle('is-fav', isFav);
+  }
+  updateCounts();
+  // Re-render if we're on favs tab
+  if (currentTab === 'favoritos') render();
+}
+
+// ── TIME ──────────────────────────────────────────────────────
+function nowHHMM() {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+function timeToMins(hhmm) {
+  if (!hhmm) return -1;
+  const [h, m] = hhmm.split(':').map(Number);
+  return h * 60 + m;
+}
+
+function isPast(hora, fin) {
+  const now = timeToMins(nowHHMM());
+  if (fin) return timeToMins(fin) <= now;
+  return timeToMins(hora) < now - 60;
+}
+
+function isNow(hora, fin) {
+  if (!fin) return false;
+  const now = timeToMins(nowHHMM());
+  return timeToMins(hora) <= now && now < timeToMins(fin);
+}
+
+function progressPct(hora, fin) {
+  const start = timeToMins(hora);
+  const end   = timeToMins(fin);
+  const now   = timeToMins(nowHHMM());
+  if (end <= start) return 0;
+  return Math.min(100, Math.max(0, ((now - start) / (end - start)) * 100));
+}
+
+// ── STATE ─────────────────────────────────────────────────────
+let currentTab = 'todos';
+let searchQuery = '';
+
+function setTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  render();
+}
+
+// ── COUNTS ────────────────────────────────────────────────────
+function updateCounts() {
+  const favs = getFavs();
+  const now  = nowHHMM();
+  let nowCount = 0;
+  CHANNELS.forEach(ch => {
+    ch.programs.forEach(p => { if (isNow(p.hora, p.fin)) nowCount++; });
+  });
+  document.getElementById('countTodos').textContent  = CHANNELS.length;
+  document.getElementById('countFavs').textContent   = favs.size;
+  document.getElementById('countAhora').textContent  = nowCount;
+}
+
+// ── HELPERS ───────────────────────────────────────────────────
+function esc(str) {
+  return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function matchesSearch(ch, q) {
+  if (!q) return true;
+  if (ch.name.toLowerCase().includes(q)) return true;
+  return ch.programs.some(p =>
+    p.titulo.toLowerCase().includes(q) ||
+    (p.desc && p.desc.toLowerCase().includes(q)) ||
+    (p.categoria && p.categoria.toLowerCase().includes(q))
+  );
+}
+
+// ── RENDER ────────────────────────────────────────────────────
+function render() {
+  const container = document.getElementById('lista');
+  const empty     = document.getElementById('emptyState');
+  const favs      = getFavs();
+  const q         = searchQuery.toLowerCase();
+
+  let list = CHANNELS.filter(ch => {
+    if (!matchesSearch(ch, q)) return false;
+    if (currentTab === 'favoritos') return favs.has(ch.id);
+    if (currentTab === 'ahora')     return ch.programs.some(p => isNow(p.hora, p.fin));
+    return true;
+  });
+
+  if (!list.length) {
+    container.innerHTML = '';
+    empty.classList.add('visible');
+    const icons  = { todos:'🔭', favoritos:'⭐', ahora:'📡' };
+    const msgs   = {
+      todos: 'No se encontraron canales',
+      favoritos: 'Aún no tienes favoritos.<br>Pulsa ★ en un canal para añadirlo.',
+      ahora: 'No hay programas en antena ahora mismo.'
+    };
+    document.getElementById('emptyIcon').textContent = icons[currentTab];
+    document.getElementById('emptyMsg').innerHTML    = msgs[currentTab];
+    return;
   }
 
-  const saved = localStorage.getItem('epg-theme');
-  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-  const initDark = saved ? saved === 'dark' : prefersDark;
-  applyTheme(initDark);
+  empty.classList.remove('visible');
 
-  toggle.addEventListener('change', () => applyTheme(toggle.checked));
+  // Favs first
+  list.sort((a, b) => {
+    const af = favs.has(a.id) ? 0 : 1;
+    const bf = favs.has(b.id) ? 0 : 1;
+    return af - bf || a.name.localeCompare(b.name);
+  });
 
-  // ============================================================
-  // TIME HELPERS
-  // ============================================================
-  function nowHHMM() {
-    const d = new Date();
-    return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
-  }
+  const fragments = list.map((ch, idx) => {
+    const isFav    = favs.has(ch.id);
+    const delay    = Math.min(idx * 0.025, 0.4);
+    const iconHTML = ch.icon
+      ? `<img class="canal-icon" src="${esc(ch.icon)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+      : '';
+    const placeholderStyle = ch.icon ? 'style="display:none"' : '';
 
-  function isNow(hora, fin) {
-    if (!fin) return false;
-    const t = nowHHMM();
-    return t >= hora && t < fin;
-  }
-
-  // ============================================================
-  // RENDER
-  // ============================================================
-  function escHTML(str) {
-    return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  }
-
-  function renderChannels(list) {
-    const container = document.getElementById('lista');
-    const empty     = document.getElementById('emptyState');
-
-    if (!list.length) {
-      container.innerHTML = '';
-      empty.classList.add('visible');
-      return;
-    }
-    empty.classList.remove('visible');
-
-    let totalProgs = 0;
-    let nowCount   = 0;
-    const fragments = [];
-
-    list.forEach((ch, idx) => {
-      totalProgs += ch.programs.length;
-
-      let progsHTML = '';
-      ch.programs.forEach(p => {
-        const active = isNow(p.hora, p.fin);
-        if (active) nowCount++;
-        const catTag = p.categoria
-          ? `<span class="prog-cat">${escHTML(p.categoria)}</span>`
-          : '';
-        const nowBadge = active ? `<span class="ahora-badge">▶ ahora</span>` : '';
-        const descHTML = p.desc
-          ? `<div class="desc">${escHTML(p.desc)}</div>`
-          : '';
-        progsHTML += `
-          <div class="programa ${active ? 'ahora' : ''}">
-            <div class="hora-col">
-              <span class="hora">${escHTML(p.hora)}</span>
-              ${p.fin ? `<span class="fin-hora">${escHTML(p.fin)}</span>` : ''}
-            </div>
-            <span class="prog-emoji">${p.emoji || '📡'}</span>
-            <div class="prog-body">
-              <span class="titulo">${escHTML(p.titulo)}</span>
-              <div class="prog-meta">${catTag}${nowBadge}</div>
-              ${descHTML}
-            </div>
-          </div>`;
-      });
-
-      const iconHTML = ch.icon
-        ? `<img class="canal-icon" src="${escHTML(ch.icon)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
-        : '';
-      const placeholderStyle = ch.icon ? 'display:none' : '';
-
-      const delay = Math.min(idx * 0.03, 0.5);
-
-      fragments.push(`
-        <div class="canal-card" data-id="${escHTML(ch.id)}" style="animation-delay:${delay}s">
-          <div class="canal-header" onclick="toggleCard(this)">
-            <div class="canal-info">
-              ${iconHTML}
-              <div class="canal-icon-placeholder" style="${placeholderStyle}">📺</div>
-              <div>
-                <div class="canal-nombre">${escHTML(ch.name)}</div>
-                <div class="canal-count">${ch.programs.length} programas hoy</div>
-              </div>
-            </div>
-            <span class="canal-chevron">▾</span>
-          </div>
-          <div class="programas-list">${progsHTML}</div>
-        </div>`);
-    });
-
-    container.innerHTML = fragments.join('');
-
-    // Update stats
-    document.getElementById('statCanales').textContent  = `📡 ${list.length} canales`;
-    document.getElementById('statProgramas').textContent = `🎬 ${totalProgs} programas`;
-    document.getElementById('statAhora').textContent     = `🔴 ${nowCount} en antena`;
-  }
-
-  // ============================================================
-  // COLLAPSE / EXPAND
-  // ============================================================
-  function toggleCard(headerEl) {
-    headerEl.closest('.canal-card').classList.toggle('collapsed');
-  }
-
-  // ============================================================
-  // SEARCH
-  // ============================================================
-  let searchTimer;
-  document.getElementById('search').addEventListener('input', function () {
-    clearTimeout(searchTimer);
-    searchTimer = setTimeout(() => {
-      const q = this.value.trim().toLowerCase();
-      if (!q) { renderChannels(CHANNELS); return; }
-      const filtered = CHANNELS.filter(ch => {
-        if (ch.name.toLowerCase().includes(q)) return true;
-        return ch.programs.some(p =>
+    // Filter programs if searching
+    let progs = ch.programs;
+    if (q) {
+      const chMatch = ch.name.toLowerCase().includes(q);
+      if (!chMatch) {
+        progs = progs.filter(p =>
           p.titulo.toLowerCase().includes(q) ||
-          (p.desc && p.desc.toLowerCase().includes(q))
+          (p.desc && p.desc.toLowerCase().includes(q)) ||
+          (p.categoria && p.categoria.toLowerCase().includes(q))
         );
-      });
-      renderChannels(filtered);
-    }, 200);
+      }
+    }
+
+    const progsHTML = progs.map(p => {
+      const active  = isNow(p.hora, p.fin);
+      const past    = !active && isPast(p.hora, p.fin);
+      const catTag  = p.categoria ? `<span class="prog-cat">${esc(p.categoria)}</span>` : '';
+      const nowBadge = active ? `<span class="ahora-badge">▶ ahora</span>` : '';
+      const descHTML = p.desc ? `<div class="desc">${esc(p.desc)}</div>` : '';
+      const progressHTML = active && p.fin
+        ? `<div class="prog-progress"><div class="prog-progress-fill" style="width:${progressPct(p.hora,p.fin)}%"></div></div>`
+        : '';
+
+      return `<div class="programa${active?' ahora':''}${past?' pasado':''}">
+        <div class="hora-col">
+          <span class="hora">${esc(p.hora)}</span>
+          ${p.fin ? `<span class="fin-hora">${esc(p.fin)}</span>` : ''}
+        </div>
+        <span class="prog-emoji">${p.emoji||'📡'}</span>
+        <div class="prog-body">
+          <span class="titulo">${esc(p.titulo)}</span>
+          <div class="prog-meta">${catTag}${nowBadge}</div>
+          ${descHTML}
+          ${progressHTML}
+        </div>
+      </div>`;
+    }).join('');
+
+    // Start collapsed if no current program and not a fav
+    const hasNow = ch.programs.some(p => isNow(p.hora, p.fin));
+    const collapsed = !hasNow && !isFav && currentTab === 'todos' ? 'collapsed' : '';
+
+    return `<div class="canal-card ${collapsed} ${isFav?'is-fav':''}" data-id="${esc(ch.id)}" style="animation-delay:${delay}s">
+      <div class="canal-header">
+        <div class="canal-header-left" onclick="toggleCard(this)">
+          ${iconHTML}
+          <div class="canal-icon-placeholder" ${placeholderStyle}>📺</div>
+          <div>
+            <div class="canal-nombre">${esc(ch.name)}</div>
+            <div class="canal-count">${progs.length} programas</div>
+          </div>
+        </div>
+        <div class="canal-actions">
+          <button class="fav-btn ${isFav?'active':''}" onclick="toggleFav('${esc(ch.id)}')" title="${isFav?'Quitar de favoritos':'Añadir a favoritos'}">★</button>
+          <span class="canal-chevron" onclick="toggleCard(this)">▾</span>
+        </div>
+      </div>
+      <div class="programas-list">${progsHTML}</div>
+    </div>`;
   });
 
-  // ============================================================
-  // BACK TO TOP
-  // ============================================================
-  const backTop = document.getElementById('backTop');
-  window.addEventListener('scroll', () => {
-    backTop.classList.toggle('visible', window.scrollY > 300);
-  }, { passive: true });
-  backTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+  container.innerHTML = fragments.join('');
+  updateCounts();
+}
 
-  // ============================================================
-  // INIT
-  // ============================================================
-  window.addEventListener('DOMContentLoaded', () => {
-    renderChannels(CHANNELS);
-    document.getElementById('loadingScreen').classList.add('hidden');
-  });
-  </script>
+// ── TOGGLE COLLAPSE ───────────────────────────────────────────
+function toggleCard(el) {
+  el.closest('.canal-card').classList.toggle('collapsed');
+}
+
+// ── SEARCH ────────────────────────────────────────────────────
+const searchInput = document.getElementById('search');
+const searchClear = document.getElementById('searchClear');
+let searchTimer;
+
+searchInput.addEventListener('input', function () {
+  searchQuery = this.value.trim();
+  searchClear.classList.toggle('visible', searchQuery.length > 0);
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(render, 200);
+});
+
+searchClear.addEventListener('click', () => {
+  searchInput.value = '';
+  searchQuery = '';
+  searchClear.classList.remove('visible');
+  render();
+  searchInput.focus();
+});
+
+// ── BACK TO TOP ───────────────────────────────────────────────
+const backTop = document.getElementById('backTop');
+window.addEventListener('scroll', () => {
+  backTop.classList.toggle('visible', window.scrollY > 400);
+}, { passive: true });
+backTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+
+// ── INIT ──────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  updateCounts();
+  render();
+  document.getElementById('loadingScreen').classList.add('hidden');
+
+  // Auto-refresh counts every minute
+  setInterval(() => { updateCounts(); render(); }, 60000);
+});
+</script>
 </body>
 </html>

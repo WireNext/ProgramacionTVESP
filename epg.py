@@ -112,7 +112,7 @@ def generate_html(canales_dict, programas_por_canal):
         canal_info = canales_dict.get(ch_id, {"name": ch_id, "icon": ""})
         nombre = canal_info["name"]
         icon = canal_info["icon"]
-        progs = sorted(programas_por_canal[ch_id], key=lambda x: x["hora"])[:8]
+        progs = sorted(programas_por_canal[ch_id], key=lambda x: x["hora"])
         for p in progs:
             p["emoji"] = get_category_emoji(p["categoria"])
         channels_data.append({
