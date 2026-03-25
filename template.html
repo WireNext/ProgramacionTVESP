@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#080c1a" id="meta-theme">
+  <title>Guía TV TDT</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Loading screen -->
+  <div class="loading-screen" id="loadingScreen">
+    <div class="spinner"></div>
+    <span class="loading-text">Cargando programación…</span>
+  </div>
+
+  <div class="app-wrapper">
+
+    <!-- ── HEADER ─────────────────────────────────────── -->
+    <header class="header">
+      <div class="header-top">
+        <div class="header-title">
+          <span class="logo-icon">📺</span>
+          <h1>Guía TDT</h1>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span class="header-meta" id="updatedTime">{{UPDATED}}</span>
+          <!-- Theme toggle -->
+          <label class="theme-toggle" title="Cambiar tema">
+            <input type="checkbox" id="themeToggle">
+            <span class="toggle-track"></span>
+            <span class="toggle-thumb" id="toggleThumb">🌙</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Search -->
+      <div class="search-wrapper">
+        <span class="search-icon">🔍</span>
+        <input type="search" id="search" placeholder="Buscar canal o programa…" autocomplete="off" spellcheck="false">
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-bar" id="statsBar">
+        <span class="stat-chip" id="statCanales">📡 — canales</span>
+        <span class="stat-chip" id="statProgramas">🎬 — programas</span>
+        <span class="stat-chip" id="statAhora">🔴 En antena</span>
+      </div>
+    </header>
+
+    <!-- ── CHANNEL LIST ───────────────────────────────── -->
+    <main id="lista"></main>
+
+    <!-- Empty state -->
+    <div class="empty-state" id="emptyState">
+      <div class="empty-icon">🔭</div>
+      <p>No se encontraron resultados</p>
+    </div>
+
+  </div>
+
+  <!-- Back to top -->
+  <button class="back-top" id="backTop" title="Volver arriba">↑</button>
+
+  <script>
+  // ============================================================
+  // DATA INJECTED BY PYTHON
+  // ============================================================
+  const CHANNELS = {{CHANNELS_DATA}};
+
+  // ============================================================
+  // THEME
+  // ============================================================
+  const html       = document.documentElement;
+  const toggle     = document.getElementById('themeToggle');
+  const thumb      = document.getElementById('toggleThumb');
+  const metaTheme  = document.getElementById('meta-theme');
+
+  function applyTheme(dark) {
+    html.setAttribute('data-theme', dark ? 'dark' : 'light');
+    thumb.textContent = dark ? '🌙' : '☀️';
+    metaTheme.content = dark ? '#080c1a' : '#f0f4ff';
+    localStorage.setItem('epg-theme', dark ? 'dark' : 'light');
+    toggle.checked = dark;
+  }
+
+  const saved = localStorage.getItem('epg-theme');
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const initDark = saved ? saved === 'dark' : prefersDark;
+  applyTheme(initDark);
+
+  toggle.addEventListener('change', () => applyTheme(toggle.checked));
+
+  // ============================================================
+  // TIME HELPERS
+  // ============================================================
+  function nowHHMM() {
+    const d = new Date();
+    return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  }
+
+  function isNow(hora, fin) {
+    if (!fin) return false;
+    const t = nowHHMM();
+    return t >= hora && t < fin;
+  }
+
+  // ============================================================
+  // RENDER
+  // ============================================================
+  function escHTML(str) {
+    return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function renderChannels(list) {
+    const container = document.getElementById('lista');
+    const empty     = document.getElementById('emptyState');
+
+    if (!list.length) {
+      container.innerHTML = '';
+      empty.classList.add('visible');
+      return;
+    }
+    empty.classList.remove('visible');
+
+    let totalProgs = 0;
+    let nowCount   = 0;
+    const fragments = [];
+
+    list.forEach((ch, idx) => {
+      totalProgs += ch.programs.length;
+
+      let progsHTML = '';
+      ch.programs.forEach(p => {
+        const active = isNow(p.hora, p.fin);
+        if (active) nowCount++;
+        const catTag = p.categoria
+          ? `<span class="prog-cat">${escHTML(p.categoria)}</span>`
+          : '';
+        const nowBadge = active ? `<span class="ahora-badge">▶ ahora</span>` : '';
+        const descHTML = p.desc
+          ? `<div class="desc">${escHTML(p.desc)}</div>`
+          : '';
+        progsHTML += `
+          <div class="programa ${active ? 'ahora' : ''}">
+            <div class="hora-col">
+              <span class="hora">${escHTML(p.hora)}</span>
+              ${p.fin ? `<span class="fin-hora">${escHTML(p.fin)}</span>` : ''}
+            </div>
+            <span class="prog-emoji">${p.emoji || '📡'}</span>
+            <div class="prog-body">
+              <span class="titulo">${escHTML(p.titulo)}</span>
+              <div class="prog-meta">${catTag}${nowBadge}</div>
+              ${descHTML}
+            </div>
+          </div>`;
+      });
+
+      const iconHTML = ch.icon
+        ? `<img class="canal-icon" src="${escHTML(ch.icon)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+        : '';
+      const placeholderStyle = ch.icon ? 'display:none' : '';
+
+      const delay = Math.min(idx * 0.03, 0.5);
+
+      fragments.push(`
+        <div class="canal-card" data-id="${escHTML(ch.id)}" style="animation-delay:${delay}s">
+          <div class="canal-header" onclick="toggleCard(this)">
+            <div class="canal-info">
+              ${iconHTML}
+              <div class="canal-icon-placeholder" style="${placeholderStyle}">📺</div>
+              <div>
+                <div class="canal-nombre">${escHTML(ch.name)}</div>
+                <div class="canal-count">${ch.programs.length} programas hoy</div>
+              </div>
+            </div>
+            <span class="canal-chevron">▾</span>
+          </div>
+          <div class="programas-list">${progsHTML}</div>
+        </div>`);
+    });
+
+    container.innerHTML = fragments.join('');
+
+    // Update stats
+    document.getElementById('statCanales').textContent  = `📡 ${list.length} canales`;
+    document.getElementById('statProgramas').textContent = `🎬 ${totalProgs} programas`;
+    document.getElementById('statAhora').textContent     = `🔴 ${nowCount} en antena`;
+  }
+
+  // ============================================================
+  // COLLAPSE / EXPAND
+  // ============================================================
+  function toggleCard(headerEl) {
+    headerEl.closest('.canal-card').classList.toggle('collapsed');
+  }
+
+  // ============================================================
+  // SEARCH
+  // ============================================================
+  let searchTimer;
+  document.getElementById('search').addEventListener('input', function () {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+      const q = this.value.trim().toLowerCase();
+      if (!q) { renderChannels(CHANNELS); return; }
+      const filtered = CHANNELS.filter(ch => {
+        if (ch.name.toLowerCase().includes(q)) return true;
+        return ch.programs.some(p =>
+          p.titulo.toLowerCase().includes(q) ||
+          (p.desc && p.desc.toLowerCase().includes(q))
+        );
+      });
+      renderChannels(filtered);
+    }, 200);
+  });
+
+  // ============================================================
+  // BACK TO TOP
+  // ============================================================
+  const backTop = document.getElementById('backTop');
+  window.addEventListener('scroll', () => {
+    backTop.classList.toggle('visible', window.scrollY > 300);
+  }, { passive: true });
+  backTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+
+  // ============================================================
+  // INIT
+  // ============================================================
+  window.addEventListener('DOMContentLoaded', () => {
+    renderChannels(CHANNELS);
+    document.getElementById('loadingScreen').classList.add('hidden');
+  });
+  </script>
+</body>
+</html>
